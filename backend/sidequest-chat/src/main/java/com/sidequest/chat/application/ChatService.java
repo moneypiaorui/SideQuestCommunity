@@ -1,0 +1,132 @@
+package com.sidequest.chat.application;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.sidequest.chat.infrastructure.ChatMessageDO;
+import com.sidequest.chat.infrastructure.ChatRoomDO;
+import com.sidequest.chat.infrastructure.mapper.ChatMessageMapper;
+import com.sidequest.chat.infrastructure.mapper.ChatRoomMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+import com.sidequest.chat.infrastructure.ChatMessageDO;
+import com.sidequest.chat.infrastructure.ChatRoomDO;
+import com.sidequest.chat.infrastructure.ChatRoomMemberDO;
+import com.sidequest.chat.infrastructure.feign.IdentityClient;
+import com.sidequest.chat.infrastructure.mapper.ChatMessageMapper;
+import com.sidequest.chat.infrastructure.mapper.ChatRoomMapper;
+import com.sidequest.chat.infrastructure.mapper.ChatRoomMemberMapper;
+import com.sidequest.chat.interfaces.dto.ChatRoomVO;
+import com.sidequest.common.Result;
+import lombok.RequiredArgsConstructor;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class ChatService {
+    private final ChatRoomMapper chatRoomMapper;
+    private final ChatMessageMapper chatMessageMapper;
+    private final ChatRoomMemberMapper chatRoomMemberMapper;
+    private final IdentityClient identityClient;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    public List<ChatRoomVO> getUserRooms(Long userId) {
+        List<ChatRoomMemberDO> memberships = chatRoomMemberMapper.selectList(new LambdaQueryWrapper<ChatRoomMemberDO>()
+                .eq(ChatRoomMemberDO::getUserId, userId));
+        
+        return memberships.stream().map(m -> {
+            ChatRoomDO room = chatRoomMapper.selectById(m.getRoomId());
+            ChatRoomVO vo = new ChatRoomVO();
+            vo.setId(room.getId());
+            vo.setName(room.getName());
+            vo.setType(room.getType());
+            
+            // 获取最后一条消息
+            ChatMessageDO lastMsg = chatMessageMapper.selectOne(new LambdaQueryWrapper<ChatMessageDO>()
+                    .eq(ChatMessageDO::getRoomId, room.getId())
+                    .orderByDesc(ChatMessageDO::getId)
+                    .last("LIMIT 1"));
+            if (lastMsg != null) {
+                vo.setLastMessage(lastMsg.getContent());
+                vo.setLastMessageTime(lastMsg.getCreateTime());
+            }
+            
+            // 获取未读数
+            Long unreadCount = chatMessageMapper.selectCount(new LambdaQueryWrapper<ChatMessageDO>()
+                    .eq(ChatMessageDO::getRoomId, room.getId())
+                    .gt(ChatMessageDO::getId, m.getLastReadMessageId()));
+            vo.setUnreadCount(unreadCount.intValue());
+            
+            // 获取对方信息 (1对1)
+            if ("PRIVATE".equals(room.getType())) {
+                ChatRoomMemberDO otherMember = chatRoomMemberMapper.selectOne(new LambdaQueryWrapper<ChatRoomMemberDO>()
+                        .eq(ChatRoomMemberDO::getRoomId, room.getId())
+                        .ne(ChatRoomMemberDO::getUserId, userId));
+                if (otherMember != null) {
+                    try {
+                        Result<IdentityClient.UserDTO> userRes = identityClient.getUserById(otherMember.getUserId());
+                        if (userRes.getCode() == 200 && userRes.getData() != null) {
+                            vo.setRecipientNickname(userRes.getData().getNickname());
+                            vo.setRecipientAvatar(userRes.getData().getAvatar());
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+            
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ChatMessageDO sendMessage(Long senderId, Long roomId, String content) {
+        ChatMessageDO msg = new ChatMessageDO();
+        msg.setRoomId(roomId);
+        msg.setSenderId(senderId);
+        msg.setContent(content);
+        msg.setType("TEXT");
+        msg.setStatus(0); // UNREAD
+        msg.setCreateTime(LocalDateTime.now());
+        chatMessageMapper.insert(msg);
+
+        kafkaTemplate.send("chat-message-topic", roomId.toString(), msg);
+        return msg;
+    }
+
+    public List<ChatMessageDO> getMessages(Long roomId, Long sinceId) {
+        LambdaQueryWrapper<ChatMessageDO> query = new LambdaQueryWrapper<ChatMessageDO>()
+                .eq(ChatMessageDO::getRoomId, roomId)
+                .orderByAsc(ChatMessageDO::getId);
+        if (sinceId != null) {
+            query.gt(ChatMessageDO::getId, sinceId);
+        }
+        return chatMessageMapper.selectList(query);
+    }
+
+    @Transactional
+    public void markAsRead(Long roomId, Long userId) {
+        ChatMessageDO lastMsg = chatMessageMapper.selectOne(new LambdaQueryWrapper<ChatMessageDO>()
+                .eq(ChatMessageDO::getRoomId, roomId)
+                .orderByDesc(ChatMessageDO::getId)
+                .last("LIMIT 1"));
+        if (lastMsg != null) {
+            chatRoomMemberMapper.update(null, new LambdaUpdateWrapper<ChatRoomMemberDO>()
+                    .eq(ChatRoomMemberDO::getRoomId, roomId)
+                    .eq(ChatRoomMemberDO::getUserId, userId)
+                    .set(ChatRoomMemberDO::getLastReadMessageId, lastMsg.getId()));
+        }
+    }
+}
+

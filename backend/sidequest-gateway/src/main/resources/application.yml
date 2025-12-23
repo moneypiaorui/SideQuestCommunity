@@ -1,0 +1,52 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+      routes:
+        - id: identity-route
+          uri: lb://identity-service
+          predicates:
+            - Path=/api/identity/**
+        - id: core-route
+          uri: lb://core-service
+          predicates:
+            - Path=/api/core/**
+        - id: media-route
+          uri: lb://media-service
+          predicates:
+            - Path=/api/media/**
+        - id: search-route
+          uri: lb://search-service
+          predicates:
+            - Path=/api/search/**
+        - id: moderation-route
+          uri: lb://moderation-service
+          predicates:
+            - Path=/api/moderation/**
+        - id: mcp-route
+          uri: lb://mcp-service
+          predicates:
+            - Path=/api/mcp/**
+        - id: chat-route
+          uri: lb://chat-service
+          predicates:
+            - Path=/api/chat/**
+    loadbalancer:
+      ribbon:
+        enabled: false # 明确禁用 Ribbon，使用 Spring Cloud LoadBalancer
+
+# JWT 配置建议外置到 Nacos
+auth:
+  jwt:
+    secret: ${JWT_SECRET:sidequest-secret-key-1234567890}
+    expiration: 86400000

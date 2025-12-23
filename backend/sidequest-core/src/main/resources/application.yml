@@ -1,0 +1,32 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: core-service
+  profiles:
+    active: dev
+  datasource:
+    url: jdbc:postgresql://${PG_HOST:localhost}:5432/sidequest_db
+    username: ${PG_USER:sidequest}
+    password: ${PG_PASSWORD:root}
+    driver-class-name: org.postgresql.Driver
+
+# 开启 Actuator 监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true

@@ -1,0 +1,27 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: search-service
+  profiles:
+    active: dev
+  elasticsearch:
+    uris: http://${ES_HOST:localhost}:9200
+  kafka:
+    bootstrap-servers: ${KAFKA_HOST:localhost}:9092
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+

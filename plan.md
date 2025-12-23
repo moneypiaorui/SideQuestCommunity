@@ -171,7 +171,12 @@
 * 鉴权校验、路由、限流、灰度与 A/B 分流、CORS、审计、Trace 注入
 * 不承载业务，不访问业务库
 
-2. **identity-service（账号与权限）**
+2. **config-service（配置中心）**
+
+* 基于 Nacos Config / Apollo 统一管理各微服务配置，支持动态刷新
+* 存储各服务的数据库连接、中间件地址、Feature Flags、业务开关
+
+3. **identity-service（账号与权限）**
 
 * 用户、密码、会话、RBAC、封禁、管理员体系
 
@@ -241,8 +246,10 @@
 * Redis：会话、热点缓存、计数器、限流、聊天室热消息、弹幕热分片
 * Kafka：事件总线（索引同步、媒体处理、埋点、审核复审）
 * OpenSearch/ES：全文检索与聚合
-* ClickHouse：OLAP 埋点与报表
-* 对象存储 + CDN：图片、视频、资源文件
+* 分析数据库：ClickHouse（已确定，用于埋点与大吞吐量日志）
+* 可观测性：Grafana + Prometheus + Loki + Tempo（已确定，LGTM 方案）
+* 对象存储：MinIO（已确定，支持 S3 协议）
+* 视频处理：FFmpeg 容器化异步处理（已确定）
 
 ### 8.2 核心数据模型（摘要）
 
@@ -525,10 +532,12 @@
 
 ## 21.2 后端（DDD 主线）
 
-* 主服务（gateway/identity/core/media/search/moderation）：
+* 主服务（gateway/identity/core/media/search/moderation/config）：
 
   * Java Spring Boot（推荐）+ 分层 DDD 结构
   * 网关：APISIX/Kong（云原生）或 Spring Cloud Gateway（Spring 体系）
+* 配置中心：Nacos Config（已确定）
+  * 注册中心：Nacos Discovery（已确定）
 * LLM/内容理解（如独立）：Python FastAPI（可选，若不拆则 core/moderation 内调用外部模型服务）
 
 ## 21.3 中间件与存储

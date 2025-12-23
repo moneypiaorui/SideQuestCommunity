@@ -1,0 +1,37 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: identity-service
+  profiles:
+    active: dev # 默认开发环境
+  datasource:
+    url: jdbc:postgresql://${PG_HOST:localhost}:5432/sidequest_db
+    username: ${PG_USER:sidequest}
+    password: ${PG_PASSWORD:root}
+    driver-class-name: org.postgresql.Driver
+
+# 开启 Actuator 监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+
+auth:
+  jwt:
+    secret: ${JWT_SECRET:sidequest-secret-key-1234567890}
+    expiration: 86400000

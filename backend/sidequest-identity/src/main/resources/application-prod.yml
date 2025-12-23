@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres-prod:5432/sidequest_db
+    username: sidequest_prod
+    password: ${PROD_DB_PASSWORD}
+  kafka:
+    bootstrap-servers: kafka-prod:9092
+  cloud:
+    nacos:
+      discovery:
+        server-addr: nacos-prod:8848
+

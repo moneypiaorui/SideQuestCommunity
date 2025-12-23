@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/sidequest_test
+    username: test
+    password: test
+  kafka:
+    bootstrap-servers: localhost:9092
+

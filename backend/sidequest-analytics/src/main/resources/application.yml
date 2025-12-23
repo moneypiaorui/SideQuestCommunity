@@ -1,0 +1,30 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: analytics-service
+  profiles:
+    active: dev
+  kafka:
+    bootstrap-servers: ${KAFKA_HOST:localhost}:9092
+  datasource:
+    url: jdbc:clickhouse://${CLICKHOUSE_HOST:localhost}:8123/default
+    driver-class-name: com.clickhouse.jdbc.ClickHouseDriver
+    username: ${CLICKHOUSE_USER:default}
+    password: ${CLICKHOUSE_PASSWORD:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
