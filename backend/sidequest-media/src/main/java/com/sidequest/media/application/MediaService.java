@@ -5,7 +5,9 @@ import com.sidequest.media.infrastructure.DanmakuDO;
 import com.sidequest.media.infrastructure.MediaDO;
 import com.sidequest.media.infrastructure.mapper.DanmakuMapper;
 import com.sidequest.media.infrastructure.mapper.MediaMapper;
+import io.minio.BucketExistsArgs;
 import io.minio.GetPresignedObjectUrlArgs;
+import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +32,7 @@ public class MediaService {
     private final MediaMapper mediaMapper;
     private final DanmakuMapper danmakuMapper;
     
-    @Value("${minio.endpoint:http://localhost:9000}")
+    @Value("${minio.endpoint:http://minio:9000}")
     private String endpoint;
     
     @Value("${minio.accessKey:minioadmin}")
@@ -42,14 +44,28 @@ public class MediaService {
     @Value("${minio.bucket:sidequest}")
     private String bucket;
 
+    @Value("${minio.publicEndpoint:}")
+    private String publicEndpoint;
+
     private MinioClient minioClient;
 
     @PostConstruct
     public void init() {
-        minioClient = MinioClient.builder()
-                .endpoint(endpoint)
-                .credentials(accessKey, secretKey)
-                .build();
+        try {
+            minioClient = MinioClient.builder()
+                    .endpoint(endpoint)
+                    .credentials(accessKey, secretKey)
+                    .build();
+            
+            // 检查并创建 Bucket
+            boolean exists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucket).build());
+            if (!exists) {
+                minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
+                log.info("Successfully created minio bucket: {}", bucket);
+            }
+        } catch (Exception e) {
+            log.error("Failed to initialize Minio client or bucket", e);
+        }
     }
 
     public List<MediaDO> getAuthorMedia(Long authorId) {
@@ -58,7 +74,7 @@ public class MediaService {
 
     public String getUploadUrl(String fileName) {
         try {
-            return minioClient.getPresignedObjectUrl(
+            String url = minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
                             .method(Method.PUT)
                             .bucket(bucket)
@@ -66,6 +82,13 @@ public class MediaService {
                             .expiry(15, TimeUnit.MINUTES)
                             .build()
             );
+
+            // 如果配置了公网访问地址，则替换生成的内部地址
+            if (publicEndpoint != null && !publicEndpoint.isBlank()) {
+                url = url.replace(endpoint, publicEndpoint);
+            }
+
+            return url;
         } catch (Exception e) {
             log.error("Error generating upload URL", e);
             throw new RuntimeException("Could not generate upload URL");

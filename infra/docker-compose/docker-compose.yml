@@ -191,6 +191,8 @@ services:
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_PUBLICENDPOINT=https://sns.szucraft.cn/minio
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       postgres:
