@@ -16,7 +16,7 @@ spring:
         - id: identity-route
           uri: lb://identity-service
           predicates:
-            - Path=/api/identity/**
+            - Path=/api/identity/**, /api/notifications/**
         - id: core-route
           uri: lb://core-service
           predicates:

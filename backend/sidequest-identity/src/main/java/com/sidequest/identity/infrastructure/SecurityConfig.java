@@ -6,6 +6,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -14,7 +15,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // 1. 禁用 CSRF（微服务架构下通常由网关处理或使用 JWT，可以禁用）
+            // 1. 禁用 CSRF
             .csrf(AbstractHttpConfigurer::disable)
             // 2. 配置请求授权规则
             .authorizeHttpRequests(auth -> auth
@@ -24,9 +25,11 @@ public class SecurityConfig {
                 .requestMatchers("/api/identity/users/*/public", "/api/identity/users/*").permitAll()
                 // 放行 Actuator 监控端点
                 .requestMatchers("/actuator/**").permitAll()
-                // 其余请求需要认证（已经在网关层做了初次鉴权，这里可以根据需要进一步细化）
+                // 其余请求需要认证
                 .anyRequest().authenticated()
-            );
+            )
+            // 3. 添加自定义过滤器处理网关传来的 Header
+            .addFilterBefore(new HeaderAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

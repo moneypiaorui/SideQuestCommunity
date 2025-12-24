@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS t_post (
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     image_urls TEXT,
     video_url VARCHAR(255),
+    video_cover_url VARCHAR(255),
+    video_duration INT DEFAULT 0,
     tags VARCHAR(255)
 );
 
