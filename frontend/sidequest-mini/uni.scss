@@ -1,0 +1,102 @@
+/* uni.scss */
+
+// Color Palette
+$primary: #60BB7D;
+$primary-dark: #3D8C57;
+$accent-red: #FF2442;
+$bg-main: #F4F6F5;
+$bg-main-dark: #0A0A0A;
+$surface: #FFFFFF;
+$surface-dark: #1A1A1A;
+$text-main: #000000;
+$text-main-dark: #FFFFFF;
+$border-color: #000000;
+$border-color-dark: #333333;
+
+// Brutalism Tokens
+$brutal-border-width: 4rpx;
+$brutal-radius: 24rpx;
+$brutal-shadow: 6rpx 6rpx 0px 0px #000000;
+$brutal-shadow-active: 2rpx 2rpx 0px 0px #000000;
+
+:root {
+  --primary: #{$primary};
+  --accent-red: #{$accent-red};
+  --bg-main: #{$bg-main};
+  --surface: #{$surface};
+  --text-main: #{$text-main};
+  --border-color: #{$border-color};
+  --shadow-color: #000000;
+  --brutal-shadow: #{$brutal-shadow};
+  --brutal-shadow-active: #{$brutal-shadow-active};
+}
+
+.dark {
+  --primary: #{$primary-dark};
+  --bg-main: #{$bg-main-dark};
+  --surface: #{$surface-dark};
+  --text-main: #{$text-main-dark};
+  --border-color: #{$border-color-dark};
+  --shadow-color: #000000;
+  --brutal-shadow: 6rpx 6rpx 0px 0px #000000;
+  --brutal-shadow-active: 2rpx 2rpx 0px 0px #000000;
+}
+
+// Global Styles
+body {
+  font-family: "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.brutal-card {
+  background-color: var(--surface);
+  border: $brutal-border-width solid var(--border-color);
+  box-shadow: var(--brutal-shadow);
+  border-radius: $brutal-radius;
+  overflow: hidden;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  
+  &:active {
+    transform: translate(2rpx, 2rpx);
+    box-shadow: var(--brutal-shadow-active);
+  }
+}
+
+.brutal-btn {
+  background-color: var(--surface);
+  border: $brutal-border-width solid var(--border-color);
+  box-shadow: var(--brutal-shadow);
+  border-radius: $brutal-radius;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  transition: all 0.1s ease;
+
+  &:active {
+    transform: translate(2rpx, 2rpx);
+    box-shadow: var(--brutal-shadow-active);
+  }
+  
+  &.primary {
+    background-color: var(--primary);
+    color: #fff;
+  }
+}
+
+.text-bold {
+  font-weight: 800;
+}
+
+.title-large {
+  font-size: 36rpx;
+  font-weight: 800;
+}
+
+.safe-area-bottom {
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
