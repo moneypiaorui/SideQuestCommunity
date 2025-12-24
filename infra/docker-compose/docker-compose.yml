@@ -214,8 +214,11 @@ services:
     environment:
       - SPRING_CLOUD_NACOS_SERVER_ADDR=nacos:8848
       - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
+      kafka:
+        condition: service_started
       elasticsearch:
         condition: service_started
       nacos:
@@ -255,9 +258,12 @@ services:
     ports:
       - "8085:8085"
     environment:
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - SPRING_CLOUD_NACOS_SERVER_ADDR=nacos:8848
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
+      kafka:
+        condition: service_started
       nacos:
         condition: service_healthy
 
@@ -292,8 +298,11 @@ services:
       - "8088:8087"
     environment:
       - SPRING_CLOUD_NACOS_SERVER_ADDR=nacos:8848
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
+      kafka:
+        condition: service_started
       nacos:
         condition: service_healthy
 
