@@ -20,4 +20,19 @@
       </profile>
     </annotationProcessing>
   </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="sidequest-analytics" options="-parameters" />
+      <module name="sidequest-chat" options="-parameters" />
+      <module name="sidequest-common" options="-parameters" />
+      <module name="sidequest-config" options="-parameters" />
+      <module name="sidequest-core" options="-parameters" />
+      <module name="sidequest-gateway" options="-parameters" />
+      <module name="sidequest-identity" options="-parameters" />
+      <module name="sidequest-mcp" options="-parameters" />
+      <module name="sidequest-media" options="-parameters" />
+      <module name="sidequest-moderation" options="-parameters" />
+      <module name="sidequest-search" options="-parameters" />
+    </option>
+  </component>
 </project>

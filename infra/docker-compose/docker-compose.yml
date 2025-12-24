@@ -62,6 +62,11 @@ services:
     environment:
       - discovery.type=single-node
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    command: >
+      sh -c "if [ ! -d plugins/analysis-ik ]; then
+               bin/elasticsearch-plugin install --batch https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v7.17.9/elasticsearch-analysis-ik-7.17.9.zip;
+             fi;
+             /usr/local/bin/docker-entrypoint.sh elasticsearch"
 
   # 对象存储
   minio:
