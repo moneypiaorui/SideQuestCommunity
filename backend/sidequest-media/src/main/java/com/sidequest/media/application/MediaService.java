@@ -63,6 +63,30 @@ public class MediaService {
                 minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
                 log.info("Successfully created minio bucket: {}", bucket);
             }
+
+            // 设置存储桶策略为公共只读，以便前端直接访问图片
+            String policy = "{\n" +
+                    "  \"Version\": \"2012-10-17\",\n" +
+                    "  \"Statement\": [\n" +
+                    "    {\n" +
+                    "      \"Effect\": \"Allow\",\n" +
+                    "      \"Principal\": {\"AWS\": [\"*\"]},\n" +
+                    "      \"Action\": [\"s3:GetBucketLocation\", \"s3:ListBucket\"],\n" +
+                    "      \"Resource\": [\"arn:aws:s3:::" + bucket + "\"]\n" +
+                    "    },\n" +
+                    "    {\n" +
+                    "      \"Effect\": \"Allow\",\n" +
+                    "      \"Principal\": {\"AWS\": [\"*\"]},\n" +
+                    "      \"Action\": [\"s3:GetObject\"],\n" +
+                    "      \"Resource\": [\"arn:aws:s3:::" + bucket + "/*\"]\n" +
+                    "    }\n" +
+                    "  ]\n" +
+                    "}";
+            minioClient.setBucketPolicy(io.minio.SetBucketPolicyArgs.builder()
+                    .bucket(bucket)
+                    .config(policy)
+                    .build());
+            log.info("Successfully set public read policy for bucket: {}", bucket);
         } catch (Exception e) {
             log.error("Failed to initialize Minio client or bucket", e);
         }
