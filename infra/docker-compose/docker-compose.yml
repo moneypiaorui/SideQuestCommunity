@@ -132,8 +132,10 @@ services:
       - SPRING_CLOUD_NACOS_SERVER_ADDR=nacos:8848
       - REDIS_HOST=redis
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
       nacos:
         condition: service_healthy
 
@@ -150,9 +152,12 @@ services:
       - REDIS_HOST=redis
       - KAFKA_HOST=kafka
     depends_on:
-      - postgres
-      - redis
-      - kafka
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
       nacos:
         condition: service_healthy
 
@@ -170,10 +175,14 @@ services:
       - KAFKA_HOST=kafka
       - MINIO_HOST=minio
     depends_on:
-      - postgres
-      - redis
-      - kafka
-      - minio
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+      minio:
+        condition: service_started
       nacos:
         condition: service_healthy
 
@@ -188,7 +197,8 @@ services:
       - SPRING_CLOUD_NACOS_SERVER_ADDR=nacos:8848
       - ES_HOST=elasticsearch
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_started
       nacos:
         condition: service_healthy
 
@@ -205,9 +215,12 @@ services:
       - REDIS_HOST=redis
       - KAFKA_HOST=kafka
     depends_on:
-      - postgres
-      - redis
-      - kafka
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
       nacos:
         condition: service_healthy
 
@@ -236,8 +249,10 @@ services:
       - CLICKHOUSE_HOST=clickhouse
       - KAFKA_HOST=kafka
     depends_on:
-      - clickhouse
-      - kafka
+      clickhouse:
+        condition: service_started
+      kafka:
+        condition: service_started
       nacos:
         condition: service_healthy
 
