@@ -7,7 +7,7 @@ COPY sidequest-gateway ./sidequest-gateway
 RUN mvn clean package -pl sidequest-gateway -am -DskipTests
 
 # Stage 2: Run
-FROM openjdk:17-slim
+FROM openjdk:17.0.2-jdk-slim-bullseye
 WORKDIR /app
 COPY --from=build /app/sidequest-gateway/target/*.jar app.jar
 EXPOSE 8080

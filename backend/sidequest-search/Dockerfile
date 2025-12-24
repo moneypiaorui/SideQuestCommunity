@@ -7,7 +7,7 @@ COPY sidequest-search ./sidequest-search
 RUN mvn clean package -pl sidequest-search -am -DskipTests
 
 # Stage 2: Run
-FROM openjdk:17-slim
+FROM openjdk:17.0.2-jdk-slim-bullseye
 WORKDIR /app
 COPY --from=build /app/sidequest-search/target/*.jar app.jar
 EXPOSE 8084
