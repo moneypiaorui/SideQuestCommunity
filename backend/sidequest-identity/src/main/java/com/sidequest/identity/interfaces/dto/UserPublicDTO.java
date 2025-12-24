@@ -7,6 +7,7 @@ public class UserPublicDTO {
     private Long id;
     private String nickname;
     private String avatar;
+    private String signature;
     private String role;
     private Integer followerCount;
     private Integer followingCount;

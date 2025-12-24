@@ -39,6 +39,15 @@ public class PostController {
         return Result.success(postService.getPostList(current, size, sectionId, tag, userId));
     }
 
+    @GetMapping("/posts/following")
+    public Result<Page<PostVO>> getFollowingPosts(
+            @RequestParam(defaultValue = "1") @Min(1) int current,
+            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size) {
+        String userId = UserContext.getUserId();
+        if (userId == null) return Result.error(401, "Unauthorized");
+        return Result.success(postService.getFollowingPostList(current, size, userId));
+    }
+
     @GetMapping("/sections")
     public Result<List<SectionDO>> listSections() {
         return Result.success(postService.getAllSections());

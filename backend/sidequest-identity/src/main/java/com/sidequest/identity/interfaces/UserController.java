@@ -42,6 +42,7 @@ public class UserController {
         dto.setId(user.getId());
         dto.setNickname(user.getNickname());
         dto.setAvatar(user.getAvatar());
+        dto.setSignature(user.getSignature());
         dto.setRole(user.getRole());
         dto.setFollowerCount(user.getFollowerCount());
         dto.setFollowingCount(user.getFollowingCount());
@@ -96,8 +97,14 @@ public class UserController {
     @PutMapping("/profile")
     public Result<String> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
         String userId = UserContext.getUserId();
-        userService.updateProfile(Long.parseLong(userId), request.getNickname(), request.getAvatar());
+        userService.updateProfile(Long.parseLong(userId), request.getNickname(), request.getAvatar(), request.getSignature());
         return Result.success("Profile updated");
+    }
+
+    @GetMapping("/me/following-ids")
+    public Result<List<Long>> getFollowingIds() {
+        String userId = UserContext.getUserId();
+        return Result.success(userService.getFollowingIds(Long.parseLong(userId)));
     }
 
     @PostMapping("/admin/users/{id}/ban")
@@ -118,6 +125,7 @@ public class UserController {
         @NotBlank(message = "Nickname cannot be blank")
         private String nickname;
         private String avatar;
+        private String signature;
     }
 }
 

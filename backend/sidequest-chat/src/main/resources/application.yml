@@ -11,6 +11,9 @@ spring:
     driver-class-name: org.postgresql.Driver
   kafka:
     bootstrap-servers: ${KAFKA_HOST:localhost}:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
   data:
     redis:
       host: ${REDIS_HOST:localhost}

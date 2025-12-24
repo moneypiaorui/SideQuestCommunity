@@ -23,6 +23,12 @@ public class ChatController {
         return Result.success(chatService.getUserRooms(userId));
     }
 
+    @GetMapping("/rooms/find")
+    public Result<ChatRoomVO> findOrCreateRoom(@RequestParam Long recipientId) {
+        Long userId = Long.valueOf(UserContext.getUserId());
+        return Result.success(chatService.findOrCreatePrivateRoom(userId, recipientId));
+    }
+
     @GetMapping("/rooms/{roomId}/messages")
     public Result<List<ChatMessageDO>> getMessages(
             @PathVariable Long roomId,

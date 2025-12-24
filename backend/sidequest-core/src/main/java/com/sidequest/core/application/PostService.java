@@ -59,11 +59,59 @@ public class PostService {
         queryWrapper.eq(PostDO::getStatus, PostDO.STATUS_NORMAL); 
         queryWrapper.orderByDesc(PostDO::getCreateTime);
         
-        Page<PostDO> postPage = postMapper.selectPage(page, queryWrapper);
+        return getPostVOPage(current, size, currentUserId, queryWrapper);
+    }
+
+    public Page<PostVO> getFollowingPostList(int current, int size, String currentUserId) {
+        if (currentUserId == null) return new Page<>(current, size);
         
+        // 1. 获取关注的用户列表
+        Result<List<Long>> followingRes = identityClient.getFollowingIds();
+        if (followingRes.getCode() != 200 || followingRes.getData() == null || followingRes.getData().isEmpty()) {
+            return new Page<>(current, size);
+        }
+        
+        List<Long> followingIds = followingRes.getData();
+        
+        // 2. 查询这些用户的帖子
+        Page<PostDO> page = new Page<>(current, size);
+        LambdaQueryWrapper<PostDO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.in(PostDO::getAuthorId, followingIds);
+        queryWrapper.eq(PostDO::getStatus, PostDO.STATUS_NORMAL);
+        queryWrapper.orderByDesc(PostDO::getCreateTime);
+        
+        return getPostVOPage(current, size, currentUserId, queryWrapper);
+    }
+
+    private Page<PostVO> getPostVOPage(int current, int size, String currentUserId, LambdaQueryWrapper<PostDO> queryWrapper) {
+        Page<PostDO> postPage = postMapper.selectPage(new Page<>(current, size), queryWrapper);
+        
+        // 提取所有作者 ID 进行批量查询 (模拟，实际可增加批量接口)
+        Set<Long> authorIds = postPage.getRecords().stream().map(PostDO::getAuthorId).collect(Collectors.toSet());
+        Map<Long, IdentityClient.UserDTO> userMap = authorIds.stream().collect(Collectors.toMap(
+                id -> id,
+                id -> {
+                    try {
+                        Result<IdentityClient.UserDTO> res = identityClient.getUserById(id);
+                        return res.getData();
+                    } catch (Exception e) {
+                        return null;
+                    }
+                },
+                (u1, u2) -> u1
+        ));
+
         Page<PostVO> voPage = new Page<>(current, size, postPage.getTotal());
         List<PostVO> voList = postPage.getRecords().stream().map(doItem -> {
             PostVO vo = convertToVO(doItem, currentUserId);
+            IdentityClient.UserDTO user = userMap.get(doItem.getAuthorId());
+            if (user != null) {
+                vo.setAuthorAvatar(user.getAvatar());
+                // 如果 PostDO 里的 authorName 为空或想用最新的，可以在这里覆盖
+                if (user.getNickname() != null) {
+                    vo.setAuthorName(user.getNickname());
+                }
+            }
             return vo;
         }).collect(Collectors.toList());
         
@@ -83,7 +131,7 @@ public class PostService {
             vo.setTags(List.of(doItem.getTags().split(",")));
         }
 
-        if (currentUserId != null) {
+        if (currentUserId != null && !currentUserId.isBlank() && !"null".equals(currentUserId)) {
             Long uid = Long.parseLong(currentUserId);
             vo.setHasLiked(likeMapper.selectCount(new LambdaQueryWrapper<LikeDO>().eq(LikeDO::getPostId, doItem.getId()).eq(LikeDO::getUserId, uid)) > 0);
             vo.setHasFavorited(favoriteMapper.selectCount(new LambdaQueryWrapper<FavoriteDO>().eq(FavoriteDO::getPostId, doItem.getId()).eq(FavoriteDO::getUserId, uid)) > 0);
@@ -118,7 +166,16 @@ public class PostService {
                 .setSql("view_count = view_count + 1"));
         post.setViewCount(post.getViewCount() + 1);
         
-        return convertToVO(post, currentUserId);
+        PostVO vo = convertToVO(post, currentUserId);
+        try {
+            Result<IdentityClient.UserDTO> userRes = identityClient.getUserById(post.getAuthorId());
+            if (userRes.getCode() == 200 && userRes.getData() != null) {
+                vo.setAuthorAvatar(userRes.getData().getAvatar());
+                vo.setAuthorName(userRes.getData().getNickname());
+            }
+        } catch (Exception ignored) {}
+        
+        return vo;
     }
 
     public List<CommentVO> getComments(Long postId) {

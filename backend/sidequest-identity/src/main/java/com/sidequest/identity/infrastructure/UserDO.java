@@ -14,6 +14,7 @@ public class UserDO {
     private String password;
     private String nickname;
     private String avatar;
+    private String signature;
     private String role; // USER, ADMIN
     private Integer status; // 0: NORMAL, 1: BANNED, 2: DELETED
     private Integer followerCount;

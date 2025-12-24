@@ -9,6 +9,7 @@ public class PostVO {
     private Long id;
     private Long authorId;
     private String authorName;
+    private String authorAvatar;
     private String title;
     private String content;
     private Long sectionId;

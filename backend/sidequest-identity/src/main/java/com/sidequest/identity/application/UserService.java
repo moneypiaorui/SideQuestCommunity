@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -39,11 +40,17 @@ public class UserService {
         return userMapper.selectById(userId);
     }
 
-    public void updateProfile(Long userId, String nickname, String avatar) {
+    public void updateProfile(Long userId, String nickname, String avatar, String signature) {
         UserDO userDO = userMapper.selectById(userId);
         if (userDO != null) {
             userDO.setNickname(nickname);
             userDO.setAvatar(avatar);
+            if (signature != null) {
+                if (signature.length() > 50) {
+                    throw new RuntimeException("Signature too long (max 50 characters)");
+                }
+                userDO.setSignature(signature);
+            }
             userMapper.updateById(userDO);
         }
     }
@@ -122,6 +129,12 @@ public class UserService {
         return followMapper.selectCount(new LambdaQueryWrapper<FollowDO>()
                 .eq(FollowDO::getFollowerId, followerId)
                 .eq(FollowDO::getFollowingId, followingId)) > 0;
+    }
+
+    public List<Long> getFollowingIds(Long userId) {
+        return followMapper.selectList(new LambdaQueryWrapper<FollowDO>()
+                .eq(FollowDO::getFollowerId, userId))
+                .stream().map(FollowDO::getFollowingId).collect(java.util.stream.Collectors.toList());
     }
 
     public LoginVO login(String username, String password) {

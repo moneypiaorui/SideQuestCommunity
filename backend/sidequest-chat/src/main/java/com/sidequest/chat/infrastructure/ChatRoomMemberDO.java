@@ -14,6 +14,6 @@ public class ChatRoomMemberDO {
     private Long roomId;
     private Long userId;
     private Long lastReadMessageId;
-    private LocalDateTime createTime;
+    private LocalDateTime joinTime;
 }
 

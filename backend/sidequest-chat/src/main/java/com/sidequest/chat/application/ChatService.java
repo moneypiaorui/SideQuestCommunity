@@ -114,5 +114,57 @@ public class ChatService {
                     .set(ChatRoomMemberDO::getLastReadMessageId, lastMsg.getId()));
         }
     }
+
+    @Transactional
+    public ChatRoomVO findOrCreatePrivateRoom(Long userId, Long recipientId) {
+        // 1. 查找是否存在两人的私聊房间
+        List<ChatRoomMemberDO> userRooms = chatRoomMemberMapper.selectList(new LambdaQueryWrapper<ChatRoomMemberDO>()
+                .eq(ChatRoomMemberDO::getUserId, userId));
+        
+        for (ChatRoomMemberDO m : userRooms) {
+            ChatRoomDO room = chatRoomMapper.selectById(m.getRoomId());
+            if ("PRIVATE".equals(room.getType())) {
+                ChatRoomMemberDO other = chatRoomMemberMapper.selectOne(new LambdaQueryWrapper<ChatRoomMemberDO>()
+                        .eq(ChatRoomMemberDO::getRoomId, m.getRoomId())
+                        .eq(ChatRoomMemberDO::getUserId, recipientId));
+                if (other != null) {
+                    // 找到了
+                    ChatRoomVO vo = new ChatRoomVO();
+                    vo.setId(room.getId());
+                    vo.setName(room.getName());
+                    vo.setType(room.getType());
+                    return vo;
+                }
+            }
+        }
+
+        // 2. 不存在则创建
+        ChatRoomDO room = new ChatRoomDO();
+        room.setName("Private Chat");
+        room.setType("PRIVATE");
+        room.setCreateTime(LocalDateTime.now());
+        chatRoomMapper.insert(room);
+
+        // 添加成员
+        ChatRoomMemberDO m1 = new ChatRoomMemberDO();
+        m1.setRoomId(room.getId());
+        m1.setUserId(userId);
+        m1.setLastReadMessageId(0L);
+        m1.setJoinTime(LocalDateTime.now());
+        chatRoomMemberMapper.insert(m1);
+
+        ChatRoomMemberDO m2 = new ChatRoomMemberDO();
+        m2.setRoomId(room.getId());
+        m2.setUserId(recipientId);
+        m2.setLastReadMessageId(0L);
+        m2.setJoinTime(LocalDateTime.now());
+        chatRoomMemberMapper.insert(m2);
+
+        ChatRoomVO vo = new ChatRoomVO();
+        vo.setId(room.getId());
+        vo.setName(room.getName());
+        vo.setType(room.getType());
+        return vo;
+    }
 }
 

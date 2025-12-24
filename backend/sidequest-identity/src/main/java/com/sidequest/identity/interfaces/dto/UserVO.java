@@ -9,6 +9,7 @@ public class UserVO {
     private String username;
     private String nickname;
     private String avatar;
+    private String signature;
     private String role;
     private Integer status;
     private Integer followerCount;

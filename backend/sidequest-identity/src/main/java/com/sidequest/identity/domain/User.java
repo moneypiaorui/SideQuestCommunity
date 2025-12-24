@@ -11,6 +11,7 @@ public class User {
     private String password;
     private String nickname;
     private String avatar;
+    private String signature;
     private String role;
     private Integer status; // 0: Normal, 1: BANNED, 2: DELETED
     private Integer followerCount;

@@ -44,24 +44,25 @@ public class AuthFilter implements GlobalFilter, Ordered {
         String path = request.getURI().getPath();
         HttpMethod method = request.getMethod();
 
-        // 1. 检查绝对白名单
+        String authHeader = request.getHeaders().getFirst("Authorization");
+        boolean hasToken = StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ");
+
+        // 1. 检查绝对白名单 (完全不需要 Token，即使有也不解析)
         if (WHITELIST.stream().anyMatch(path::contains) || path.contains("/api/public")) {
             return chain.filter(exchange);
         }
 
-        // 2. 检查公开的 GET 接口
-        if (method == HttpMethod.GET && PUBLIC_GET_PREFIXES.stream().anyMatch(path::startsWith)) {
-            // 特殊处理：如果是获取个人信息的 /api/identity/me，还是需要鉴权
-            if (!path.equals("/api/identity/me")) {
-                return chain.filter(exchange);
+        // 2. 如果没有 Token，检查是否是公开接口
+        if (!hasToken) {
+            if (method == HttpMethod.GET && PUBLIC_GET_PREFIXES.stream().anyMatch(path::startsWith)) {
+                if (!path.equals("/api/identity/me")) {
+                    return chain.filter(exchange);
+                }
             }
-        }
-
-        String authHeader = request.getHeaders().getFirst("Authorization");
-        if (!StringUtils.hasText(authHeader) || !authHeader.startsWith("Bearer ")) {
             return unauthorized(exchange);
         }
 
+        // 3. 有 Token，解析并注入用户信息
         String token = authHeader.substring(7);
         try {
             Claims claims = Jwts.parser()
@@ -70,22 +71,24 @@ public class AuthFilter implements GlobalFilter, Ordered {
                     .getBody();
             
             String userId = claims.getSubject();
+            String role = (String) claims.get("role");
             
-            // RBAC 权限校验
-            if (path.contains("/api/admin")) {
-                String role = (String) claims.get("role");
-                if (!"ADMIN".equals(role)) {
-                    return forbidden(exchange);
-                }
+            // RBAC 权限校验 (针对特定路径)
+            if (path.contains("/api/admin") && !"ADMIN".equals(role)) {
+                return forbidden(exchange);
             }
             
             ServerHttpRequest mutableRequest = request.mutate()
                     .header("X-User-Id", userId)
-                    .header("X-User-Role", (String) claims.get("role"))
+                    .header("X-User-Role", role)
                     .build();
             
             return chain.filter(exchange.mutate().request(mutableRequest).build());
         } catch (Exception e) {
+            // 如果是公开接口且 Token 解析失败，仍然放行 (但没有用户信息)
+            if (method == HttpMethod.GET && PUBLIC_GET_PREFIXES.stream().anyMatch(path::startsWith) && !path.equals("/api/identity/me")) {
+                return chain.filter(exchange);
+            }
             return unauthorized(exchange);
         }
     }
