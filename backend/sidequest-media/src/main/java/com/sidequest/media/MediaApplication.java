@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.sidequest"})
 @EnableDiscoveryClient
 @MapperScan("com.sidequest.media.infrastructure")
 public class MediaApplication {
