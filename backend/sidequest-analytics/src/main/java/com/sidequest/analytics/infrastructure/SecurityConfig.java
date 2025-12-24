@@ -1,7 +1,8 @@
-package com.sidequest.identity.infrastructure;
+package com.sidequest.analytics.infrastructure;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -9,25 +10,23 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // 1. 禁用 CSRF（微服务架构下通常由网关处理或使用 JWT，可以禁用）
             .csrf(AbstractHttpConfigurer::disable)
-            // 2. 配置请求授权规则
             .authorizeHttpRequests(auth -> auth
-                // 放行登录、注册接口
-                .requestMatchers("/api/identity/login", "/api/identity/register").permitAll()
-                // 放行获取公开用户信息和内部调用的接口
-                .requestMatchers("/api/identity/users/*/public", "/api/identity/users/*").permitAll()
-                // 放行 Actuator 监控端点
+                // 放行监控端点
                 .requestMatchers("/actuator/**").permitAll()
-                // 其余请求需要认证（已经在网关层做了初次鉴权，这里可以根据需要进一步细化）
+                // 放行公开的统计接口（例如用户公开主页的统计）
+                .requestMatchers("/api/analytics/users/*/stats").permitAll()
+                // 其余请求需要认证
                 .anyRequest().authenticated()
             );
 
         return http.build();
     }
 }
+
