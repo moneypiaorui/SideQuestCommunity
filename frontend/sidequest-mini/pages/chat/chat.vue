@@ -46,20 +46,101 @@ import { ref, onMounted, nextTick } from 'vue'
 import request from '@/utils/request'
 
 const isDark = ref(uni.getStorageSync('isDark') || false); const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight)
-const myId = 1; const myAvatar = 'https://picsum.photos/200/200?random=10'
-const recipientName = ref('野兽派小秘书'); const recipientAvatar = ref('https://picsum.photos/100/100?random=20')
-const messages = ref([]); const inputMsg = ref(''); const lastMessageId = ref('')
+const myId = ref(0)
+const myAvatar = ref('')
+const recipientId = ref(0)
+const recipientName = ref('')
+const recipientAvatar = ref('')
+const messages = ref([])
+const inputMsg = ref('')
+const lastMessageId = ref('')
+const roomId = ref(0)
 
 onMounted(async () => {
-  const pages = getCurrentPages(); const id = pages[pages.length - 1].options.roomId || 1
-  messages.value = await request({ url: `/api/chat/rooms/${id}/messages` })
+  const pages = getCurrentPages()
+  const options = pages[pages.length - 1].options
+  roomId.value = options.roomId || 0
+  recipientId.value = options.recipientId || 0
+  recipientName.value = options.recipientName || '私信'
+  
+  // 1. 获取我的信息
+  try {
+    const me = await request({ url: '/api/identity/me' })
+    myId.value = me.id
+    myAvatar.value = me.avatar || '/static/default-avatar.png'
+  } catch (err) {}
+
+  // 2. 如果没有 roomId，先通过 recipientId 查找或创建房间
+  if (!roomId.value && recipientId.value) {
+    try {
+      const room = await request({ url: `/api/chat/rooms/find?recipientId=${recipientId.value}` })
+      roomId.value = room.id
+    } catch (err) {
+      uni.showToast({ title: '初始化聊天失败', icon: 'none' })
+    }
+  }
+
+  // 3. 加载消息并标记已读
+  if (roomId.value) {
+    try {
+      await request({ url: `/api/chat/rooms/${roomId.value}/read`, method: 'POST' })
+      const res = await request({ url: `/api/chat/rooms/${roomId.value}/messages` })
+      messages.value = res
+      
+      // 提取对方头像
+      if (options.recipientAvatar) {
+        recipientAvatar.value = options.recipientAvatar
+      } else {
+        const otherMsg = messages.value.find(m => m.senderId !== myId.value)
+        if (otherMsg) {
+          // 这里可以进一步优化，从消息列表或房间详情中获取对方头像
+        }
+      }
+    } catch (err) {}
+  }
+  
   scrollToBottom()
+  
+  // 开启定时轮询新消息 (实际项目中建议使用 WebSocket)
+  startPolling()
 })
 
-const sendMsg = () => {
+const pollingTimer = ref(null)
+const startPolling = () => {
+  pollingTimer.value = setInterval(async () => {
+    if (!roomId.value) return
+    try {
+      const lastId = messages.value.length > 0 ? messages.value[messages.value.length - 1].id : 0
+      const newMsgs = await request({ url: `/api/chat/rooms/${roomId.value}/messages?sinceId=${lastId}` })
+      if (newMsgs.length > 0) {
+        messages.value.push(...newMsgs)
+        scrollToBottom()
+      }
+    } catch (err) {}
+  }, 3000)
+}
+
+import { onUnmounted } from 'vue'
+onUnmounted(() => {
+  if (pollingTimer.value) clearInterval(pollingTimer.value)
+})
+
+const sendMsg = async () => {
   if (!inputMsg.value) return
-  messages.value.push({ id: Date.now(), senderId: myId, content: inputMsg.value })
-  inputMsg.value = ''; scrollToBottom()
+  const content = inputMsg.value
+  inputMsg.value = ''
+  
+  try {
+    const res = await request({
+      url: `/api/chat/rooms/${roomId.value}/send`,
+      method: 'POST',
+      data: { content }
+    })
+    messages.value.push(res)
+    scrollToBottom()
+  } catch (err) {
+    uni.showToast({ title: '发送失败', icon: 'none' })
+  }
 }
 const scrollToBottom = () => nextTick(() => lastMessageId.value = 'bottom-anchor')
 const goBack = () => uni.navigateBack()

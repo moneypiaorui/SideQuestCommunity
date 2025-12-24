@@ -25,8 +25,8 @@
           </view>
           
           <view class="input-item">
-            <text class="label">个人简介</text>
-            <textarea v-model="user.bio" class="brutal-textarea brutal-card" placeholder="向大家介绍一下你自己..." />
+            <text class="label">个人简介 (最多50字)</text>
+            <textarea v-model="user.signature" class="brutal-textarea brutal-card" placeholder="向大家介绍一下你自己..." maxlength="50" />
           </view>
         </view>
         
@@ -42,14 +42,83 @@ import { ref, onMounted } from 'vue'
 import request from '@/utils/request'
 
 const isDark = ref(uni.getStorageSync('isDark') || false); const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight)
-const user = ref({ nickname: '', avatar: '', bio: '探索新野兽主义设计的独立开发者。' })
+const user = ref({ nickname: '', avatar: '', signature: '' })
 
-onMounted(async () => { user.value = await request({ url: '/api/identity/me' }) })
+onMounted(async () => { 
+  const res = await request({ url: '/api/identity/me' })
+  user.value = res
+})
+
+const changeAvatar = () => {
+  uni.chooseImage({
+    count: 1,
+    success: async (res) => {
+      const tempPath = res.tempFilePaths[0]
+      try {
+        // 1. 获取上传链接
+        const fileName = `avatar_${Date.now()}.jpg`
+        const uploadUrl = await request({
+          url: `/api/media/upload-url?fileName=${encodeURIComponent(fileName)}`
+        })
+
+        // 2. 将图片转为 ArrayBuffer (更兼容二进制发送)
+        const binaryData = await new Promise((resolve, reject) => {
+          if (typeof window !== 'undefined') {
+            // H5 环境
+            fetch(tempPath)
+              .then(r => r.arrayBuffer())
+              .then(resolve)
+              .catch(reject)
+          } else {
+            // 小程序/App 环境
+            uni.getFileSystemManager().readFile({
+              filePath: tempPath,
+              success: r => resolve(r.data),
+              fail: reject
+            })
+          }
+        })
+
+        await new Promise((resolve, reject) => {
+          uni.request({
+            url: uploadUrl,
+            method: 'PUT',
+            data: binaryData,
+            header: { 
+              'Content-Type': 'image/jpeg'
+            },
+            success: (r) => {
+              if (r.statusCode === 200 || r.statusCode === 204) resolve(r)
+              else reject(new Error('Upload failed: ' + r.statusCode))
+            },
+            fail: reject
+          })
+        })
+
+        // 3. 更新本地显示
+        user.value.avatar = uploadUrl.split('?')[0]
+      } catch (err) {
+        console.error('Upload error:', err)
+        uni.showToast({ title: '头像上传失败: ' + (err.message || ''), icon: 'none' })
+      }
+    }
+  })
+}
 
 const save = async () => {
-  await request({ url: '/api/identity/profile', method: 'PUT', data: user.value })
-  uni.showToast({ title: '资料已更新', icon: 'success' })
-  setTimeout(() => uni.navigateBack(), 1000)
+  try {
+    await request({ 
+      url: '/api/identity/profile', 
+      method: 'PUT', 
+      data: {
+        nickname: user.value.nickname,
+        avatar: user.value.avatar,
+        signature: user.value.signature
+      } 
+    })
+    uni.showToast({ title: '资料已更新', icon: 'success' })
+    setTimeout(() => uni.navigateBack(), 1000)
+  } catch (err) {}
 }
 const goBack = () => uni.navigateBack()
 </script>

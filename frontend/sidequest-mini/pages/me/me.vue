@@ -23,6 +23,10 @@
             <text class="user-id">ID: {{ user.id || '---' }}</text>
           </view>
         </view>
+
+        <view v-if="user.signature" class="signature-box">
+          <text class="signature-text">{{ user.signature }}</text>
+        </view>
         
         <view class="stats-row">
           <view v-for="s in stats" :key="s.label" class="stat-item">
@@ -211,6 +215,17 @@ const goToEdit = () => {
       font-weight: 600;
       opacity: 0.6;
     }
+  }
+}
+
+.signature-box {
+  margin-top: 20rpx;
+  .signature-text {
+    font-size: 24rpx;
+    font-weight: 600;
+    opacity: 0.8;
+    color: #000;
+    line-height: 1.4;
   }
 }
 

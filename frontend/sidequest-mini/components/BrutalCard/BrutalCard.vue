@@ -17,11 +17,11 @@
     <view class="content">
       <text class="title">{{ post.title }}</text>
       <view class="footer">
-        <view class="author" @click.stop="$emit('user-click', post.authorId)">
+        <view class="author" @click.stop="$emit('user-click', post.authorId)" @touchstart.stop>
           <image :src="post.authorAvatar || '/static/default-avatar.png'" class="avatar" />
           <text class="author-name">{{ post.authorName }}</text>
         </view>
-        <view class="likes" @click.stop="$emit('like', post.id)">
+        <view class="likes" @click.stop="$emit('like', post.id)" @touchstart.stop>
           <svg width="28" height="28" viewBox="0 0 24 24" 
                :fill="post.hasLiked ? 'var(--accent-red)' : 'none'" 
                :stroke="post.hasLiked ? 'var(--accent-red)' : 'currentColor'" 

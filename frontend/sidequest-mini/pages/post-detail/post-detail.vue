@@ -54,7 +54,9 @@
     </scroll-view>
     
     <view class="footer safe-area-bottom brutal-card">
-      <view class="comment-input brutal-btn" @click="handleCommentClick"><text class="placeholder">说点什么...</text></view>
+      <view class="comment-input brutal-btn" @click="showCommentPopup = true">
+        <text class="placeholder">说点什么...</text>
+      </view>
       <view class="action-btn" @click="handleLike">
         <svg width="24" height="24" viewBox="0 0 24 24" :fill="post.hasLiked ? 'var(--accent-red)' : 'none'" :stroke="post.hasLiked ? 'var(--accent-red)' : 'currentColor'" stroke-width="3">
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
@@ -68,6 +70,24 @@
         <text class="count">{{ post.favoriteCount || 0 }}</text>
       </view>
     </view>
+    
+    <!-- 评论输入弹窗 -->
+    <view v-if="showCommentPopup" class="comment-popup-mask" @click="showCommentPopup = false">
+      <view class="comment-popup-content brutal-card" @click.stop>
+        <textarea 
+          v-model="commentContent" 
+          class="brutal-textarea" 
+          placeholder="既然来了，就留个言吧..." 
+          fixed
+          auto-focus
+          cursor-spacing="40"
+        />
+        <view class="popup-footer">
+          <view class="brutal-btn primary send-btn" :loading="submittingComment" @click="submitComment">发布</view>
+        </view>
+      </view>
+    </view>
+
     <LoginModal />
   </view>
 </template>
@@ -81,6 +101,9 @@ const isDark = ref(uni.getStorageSync('isDark') || false)
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight)
 const post = ref({})
 const comments = ref([])
+const showCommentPopup = ref(false)
+const commentContent = ref('')
+const submittingComment = ref(false)
 
 // 动态计算 Swiper 高度，最小 3:4
 const swiperHeight = computed(() => {
@@ -95,9 +118,18 @@ const swiperHeight = computed(() => {
 })
 
 onMounted(async () => {
-  const pages = getCurrentPages(); const id = pages[pages.length - 1].options.id || 1
+  const pages = getCurrentPages(); const options = pages[pages.length - 1].options
+  const id = options.id || 1
+  
+  // 支持从列表带入初始状态
+  if (options.hasLiked !== undefined) post.value.hasLiked = options.hasLiked === 'true'
+  if (options.likeCount !== undefined) post.value.likeCount = parseInt(options.likeCount)
+  if (options.hasFavorited !== undefined) post.value.hasFavorited = options.hasFavorited === 'true'
+  if (options.favoriteCount !== undefined) post.value.favoriteCount = parseInt(options.favoriteCount)
+
   try {
-    post.value = await request({ url: `/api/core/posts/${id}` })
+    const res = await request({ url: `/api/core/posts/${id}` })
+    post.value = { ...post.value, ...res } // 合并数据，保留初始状态直到加载完成
     comments.value = await request({ url: `/api/core/interactions/comments?postId=${id}` }) || []
   } catch (err) {}
 })
@@ -129,6 +161,35 @@ const handleFollow = async () => {
 
 const goToUserProfile = (id) => uni.navigateTo({ url: `/pages/user-profile/user-profile?userId=${id}` })
 const goBack = () => uni.navigateBack()
+
+const submitComment = async () => {
+  if (!commentContent.value.trim()) return
+  const token = uni.getStorageSync('token')
+  if (!token) { bus.openLogin(); return }
+
+  submittingComment.value = true
+  try {
+    await request({
+      url: '/api/core/interactions/comment',
+      method: 'POST',
+      data: {
+        postId: post.value.id,
+        content: commentContent.value
+      }
+    })
+    
+    uni.showToast({ title: '评论成功', icon: 'success' })
+    commentContent.value = ''
+    showCommentPopup.value = false
+    
+    // 刷新评论列表
+    comments.value = await request({ url: `/api/core/interactions/comments?postId=${post.value.id}` })
+    post.value.commentCount = (post.value.commentCount || 0) + 1
+  } catch (err) {
+  } finally {
+    submittingComment.value = false
+  }
+}
 </script>
 
 <style lang="scss" scoped>
@@ -150,4 +211,43 @@ const goBack = () => uni.navigateBack()
   .comment-item { display: flex; gap: 20rpx; margin-bottom: 30rpx; .comment-avatar { width: 64rpx; height: 64rpx; border-radius: 50%; flex-shrink: 0; } .comment-user { font-size: 26rpx; font-weight: 800; color: var(--text-main); margin-bottom: 12rpx; display: block; } .comment-text { font-size: 26rpx; color: var(--text-main); line-height: 1.4; } } 
 }
 .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 130rpx; background: var(--surface); display: flex; align-items: center; padding: 0 30rpx; gap: 30rpx; border-radius: 48rpx 48rpx 0 0; z-index: 100; border-top: 4rpx solid #000; .comment-input { flex: 1; height: 80rpx; justify-content: flex-start; padding-left: 30rpx; .placeholder { font-size: 26rpx; opacity: 0.5; color: var(--text-main); } } .action-btn { display: flex; flex-direction: column; align-items: center; color: var(--text-main); .count { font-size: 20rpx; font-weight: 800; margin-top: 4rpx; } } }
+
+.comment-popup-mask {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+}
+
+.comment-popup-content {
+  width: 100%;
+  background: var(--surface);
+  padding: 40rpx;
+  border-radius: 48rpx 48rpx 0 0;
+  border-top: 4rpx solid #000;
+  
+  .brutal-textarea {
+    width: 100%;
+    height: 240rpx;
+    background: var(--bg-main);
+    border: 4rpx solid #000;
+    border-radius: 24rpx;
+    padding: 24rpx;
+    font-size: 28rpx;
+    box-sizing: border-box;
+    margin-bottom: 30rpx;
+  }
+  
+  .popup-footer {
+    display: flex;
+    justify-content: flex-end;
+    .send-btn {
+      width: 160rpx;
+      height: 80rpx;
+      font-size: 28rpx;
+    }
+  }
+}
 </style>

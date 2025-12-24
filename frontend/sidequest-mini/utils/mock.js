@@ -1,6 +1,6 @@
 // utils/mock.js
 
-export const IS_LOGGED_IN = true; // 一键模拟登录状态
+export const IS_LOGGED_IN = false; // 一键模拟登录状态
 
 export const mockUsers = [
   { id: 1, nickname: "NEO MASTER", avatar: "https://picsum.photos/200/200?random=10" },

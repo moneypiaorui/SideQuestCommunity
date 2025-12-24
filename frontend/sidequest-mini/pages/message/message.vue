@@ -28,7 +28,7 @@
           v-for="room in rooms" 
           :key="room.id" 
           class="chat-item brutal-card"
-          @click="goToChat(room.id)"
+          @click="goToChat(room)"
         >
           <image :src="room.recipientAvatar || '/static/default-avatar.png'" class="avatar" />
           <view class="chat-info">
@@ -76,7 +76,11 @@ onMounted(async () => {
 })
 
 const goToNotify = (path) => uni.navigateTo({ url: path })
-const goToChat = (roomId) => uni.navigateTo({ url: `/pages/chat/chat?roomId=${roomId}` })
+const goToChat = (room) => {
+  uni.navigateTo({ 
+    url: `/pages/chat/chat?roomId=${room.id}&recipientName=${room.recipientNickname}&recipientAvatar=${room.recipientAvatar}` 
+  })
+}
 const formatTime = (t) => t ? t.split('T')[0].slice(5) : ''
 const toggleDark = () => { isDark.value = !isDark.value; uni.setStorageSync('isDark', isDark.value) }
 </script>

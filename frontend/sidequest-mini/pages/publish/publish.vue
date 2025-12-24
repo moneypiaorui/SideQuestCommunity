@@ -10,8 +10,10 @@
     
     <scroll-view scroll-y class="content-scroll">
       <view class="media-section">
-      <view v-if="tempMedia" class="media-preview brutal-card">
-        <image :src="tempMedia.path" mode="aspectFit" class="preview-img" />
+      <view v-if="tempMedia" class="media-preview-container">
+        <view class="media-preview brutal-card">
+          <image :src="tempMedia.path" mode="aspectFit" class="preview-img" />
+        </view>
         <view class="remove-btn" @click="tempMedia = null">✕</view>
       </view>
       <view v-else class="upload-placeholder brutal-btn" @click="chooseMedia">
@@ -216,13 +218,37 @@ const submit = async () => {
       url: `/api/media/upload-url?fileName=${encodeURIComponent(fileName)}`
     })
     
-    // 2. Upload to MinIO
+    // 2. Upload to MinIO (using ArrayBuffer for binary safety)
+    const binaryData = await new Promise((resolve, reject) => {
+      // H5 逻辑
+      if (typeof window !== 'undefined') {
+        fetch(tempMedia.value.path)
+          .then(res => res.arrayBuffer())
+          .then(resolve)
+          .catch(reject)
+      } else {
+        // 小程序/App 逻辑
+        const fs = uni.getFileSystemManager()
+        fs.readFile({
+          filePath: tempMedia.value.path,
+          success: res => resolve(res.data),
+          fail: reject
+        })
+      }
+    })
+
     await new Promise((resolve, reject) => {
-      uni.uploadFile({
+      uni.request({
         url: uploadUrl,
-        filePath: tempMedia.value.path,
-        name: 'file',
-        success: resolve,
+        method: 'PUT',
+        data: binaryData,
+        header: {
+          'Content-Type': tempMedia.value.type === 'video' ? 'video/mp4' : 'image/jpeg'
+        },
+        success: (res) => {
+          if (res.statusCode === 200 || res.statusCode === 204) resolve(res)
+          else reject(new Error('Upload failed with status ' + res.statusCode))
+        },
         fail: reject
       })
     })
@@ -294,21 +320,29 @@ const submit = async () => {
   box-sizing: border-box;
   padding-right: 12rpx;
   
-  .media-preview {
+  .media-preview-container {
     width: 100%;
-    height: 400rpx;
     position: relative;
+    padding-top: 20rpx; // 为顶部按钮留出空间
+    padding-right: 20rpx; // 为右侧按钮留出空间
     box-sizing: border-box;
-    
-    .preview-img {
+
+    .media-preview {
       width: 100%;
-      height: 100%;
+      height: 400rpx;
+      position: relative;
+      box-sizing: border-box;
+      
+      .preview-img {
+        width: 100%;
+        height: 100%;
+      }
     }
     
     .remove-btn {
       position: absolute;
-      top: -20rpx;
-      right: -20rpx;
+      top: 0;
+      right: 0;
       width: 50rpx;
       height: 50rpx;
       background: var(--accent-red);
@@ -319,6 +353,7 @@ const submit = async () => {
       justify-content: center;
       border: 4rpx solid #000;
       font-weight: 800;
+      z-index: 10;
     }
   }
   

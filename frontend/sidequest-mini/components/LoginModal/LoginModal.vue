@@ -6,8 +6,14 @@
       </view>
       
       <view class="form-box">
-        <text class="title">IDENTITY CHECK</text>
+        <text class="title">{{ mode === 'login' ? 'IDENTITY CHECK' : 'NEW ADVENTURER' }}</text>
         <view class="input-group">
+          <input 
+            v-if="mode === 'register'"
+            v-model="form.nickname" 
+            class="brutal-input brutal-card" 
+            placeholder="昵称" 
+          />
           <input 
             v-model="form.username" 
             class="brutal-input brutal-card" 
@@ -21,15 +27,23 @@
           />
         </view>
         
-        <button class="brutal-btn primary login-btn" :loading="loading" @click="handleLogin">
-          登录
+        <button class="brutal-btn primary login-btn" :loading="loading" @click="handleSubmit">
+          {{ mode === 'login' ? '登录' : '注册并登录' }}
         </button>
         
-        <view class="footer-links">
-          <text class="link">还没有账号？去注册</text>
+        <view class="footer-links" @click="toggleMode">
+          <text class="link">{{ mode === 'login' ? '还没有账号？去注册' : '已有账号？去登录' }}</text>
         </view>
       </view>
       <view class="close-icon" @click="close">✕</view>
+    </view>
+
+    <!-- 成功提示弹窗 (比登录框高一级) -->
+    <view v-if="showSuccess" class="success-overlay">
+      <view class="success-box brutal-card">
+        <view class="check-icon">✓</view>
+        <text class="success-text">{{ successMsg }}</text>
+      </view>
     </view>
   </view>
 </template>
@@ -40,42 +54,73 @@ import { bus } from '@/utils/bus'
 import request from '@/utils/request'
 
 const loading = ref(false)
+const mode = ref('login') // 'login' or 'register'
+const showSuccess = ref(false)
+const successMsg = ref('')
+
 const form = reactive({
   username: '',
-  password: ''
+  password: '',
+  nickname: ''
 })
 
 const close = () => {
   bus.closeLogin()
+  mode.value = 'login'
 }
 
-const handleLogin = async () => {
-  if (!form.username || !form.password) {
+const toggleMode = () => {
+  mode.value = mode.value === 'login' ? 'register' : 'login'
+}
+
+const handleSubmit = async () => {
+  if (!form.username || !form.password || (mode.value === 'register' && !form.nickname)) {
     uni.showToast({ title: '请填写完整', icon: 'none' })
     return
   }
   
   loading.value = true
   try {
+    if (mode.value === 'register') {
+      await request({
+        url: '/api/identity/register',
+        method: 'POST',
+        data: {
+          username: form.username,
+          password: form.password,
+          nickname: form.nickname
+        }
+      })
+    }
+
     const res = await request({
       url: '/api/identity/login',
       method: 'POST',
-      data: form
+      data: {
+        username: form.username,
+        password: form.password
+      }
     })
     
-    uni.setStorageSync('token', res.token || 'mock_token')
+    uni.setStorageSync('token', res.token)
     uni.setStorageSync('userInfo', res)
     
-    uni.showToast({ title: '登录成功', icon: 'success' })
-    setTimeout(() => {
+    // 显示更高级别的成功弹窗
+    successMsg.value = mode.value === 'register' ? '注册并登录成功' : '登录成功'
+    showSuccess.value = true
+    
+      setTimeout(() => {
+      showSuccess.value = false
       bus.closeLogin()
-      // Optional: reload current page data
+      // 触发全局登录成功事件
+      uni.$emit('loginSuccess')
+      // 兼容非 setup 页面
       const pages = getCurrentPages()
       const curPage = pages[pages.length - 1]
       if (curPage && curPage.onLoad) {
         curPage.onLoad(curPage.options)
       }
-    }, 1000)
+    }, 1500)
   } catch (err) {
   } finally {
     loading.value = false
@@ -184,6 +229,38 @@ const handleLogin = async () => {
     opacity: 0.6;
     text-decoration: underline;
     color: var(--text-main);
+  }
+}
+
+.success-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 4000; // 比 modal-mask (3000) 更高
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  .success-box {
+    background: var(--primary);
+    padding: 60rpx;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30rpx;
+    transform: rotate(2deg);
+    
+    .check-icon {
+      font-size: 80rpx;
+      color: #fff;
+      font-weight: 900;
+    }
+    
+    .success-text {
+      font-size: 36rpx;
+      font-weight: 900;
+      color: #fff;
+    }
   }
 }
 </style>

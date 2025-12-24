@@ -2,8 +2,9 @@
 import { IS_LOGGED_IN, mockPosts, mockSections, mockUserInfo, mockUnreadCounts, mockChatRooms, mockOtherUser, mockChatMessages, mockComments } from './mock'
 import { bus } from './bus'
 
-const BASE_URL = 'http://localhost:8080'
-const USE_MOCK = true 
+// const BASE_URL = 'http://localhost:8080'
+const BASE_URL = 'https://sns.szucraft.cn'
+const USE_MOCK = false 
 
 const request = (options) => {
   if (USE_MOCK) {

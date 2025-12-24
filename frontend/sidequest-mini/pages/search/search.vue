@@ -19,15 +19,15 @@
       </view>
     </view>
     
-    <scroll-view scroll-y class="content-scroll">
-      <view v-if="!results.length" class="hot-search brutal-card">
+    <scroll-view scroll-y class="content-scroll" @scrolltolower="loadMore">
+      <view v-if="!results.length && !loading" class="hot-search brutal-card">
         <text class="title">热门搜索</text>
         <view class="hot-tags">
           <view 
             v-for="tag in hotTags" 
             :key="tag" 
             class="hot-tag brutal-btn"
-            @click="keyword = tag; onSearch()"
+            @click="keyword = tag; onSearch(true)"
           >
             {{ tag }}
           </view>
@@ -36,13 +36,15 @@
       
       <view v-else class="waterfall">
         <view class="column left-column">
-          <BrutalCard v-for="post in leftColumnPosts" :key="post.id" :post="post" />
+          <BrutalCard v-for="post in leftColumnPosts" :key="post.id" :post="post" @click="goToDetail(post.id)" />
         </view>
         <view class="column right-column">
-          <BrutalCard v-for="post in rightColumnPosts" :key="post.id" :post="post" />
+          <BrutalCard v-for="post in rightColumnPosts" :key="post.id" :post="post" @click="goToDetail(post.id)" />
         </view>
       </view>
       
+      <view v-if="loading" class="loading-status">加载中...</view>
+      <view v-if="noMore" class="loading-status">没有更多了</view>
       <view class="safe-area-bottom" style="height: 100rpx;" />
     </scroll-view>
   </view>
@@ -63,39 +65,78 @@ const rightColumnPosts = ref([])
 let leftHeight = 0
 let rightHeight = 0
 
+const loading = ref(false)
+const noMore = ref(false)
+let currentPage = 1
+
 onMounted(() => {
   const sys = uni.getSystemInfoSync()
   statusBarHeight.value = sys.statusBarHeight
 })
 
-const onSearch = async () => {
+const onSearch = async (reset = true) => {
   if (!keyword.value) return
+  if (loading.value || (noMore.value && !reset)) return
+  
+  if (reset) {
+    currentPage = 1
+    noMore.value = false
+    leftColumnPosts.value = []
+    rightColumnPosts.value = []
+    leftHeight = 0
+    rightHeight = 0
+    results.value = []
+  }
+
+  loading.value = true
   try {
-    const data = await request({ url: `/api/search/posts?keyword=${encodeURIComponent(keyword.value)}` })
-    results.value = data.content
-    distributePosts(data.content.map(p => ({
-      ...p,
-      imageUrls: typeof p.imageUrls === 'string' ? JSON.parse(p.imageUrls) : (p.imageUrls || [])
-    })))
-  } catch (err) {}
+    const data = await request({ 
+      url: `/api/search/posts?keyword=${encodeURIComponent(keyword.value)}&page=${currentPage}&size=10` 
+    })
+    const records = data.content || []
+    
+    if (records.length === 0) {
+      noMore.value = true
+    } else {
+      results.value = [...results.value, ...records]
+      distributePosts(records.map(p => ({
+        ...p,
+        imageUrls: typeof p.imageUrls === 'string' ? JSON.parse(p.imageUrls) : (p.imageUrls || [])
+      })))
+      currentPage++
+    }
+  } catch (err) {
+    console.error('Search failed:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+const loadMore = () => {
+  onSearch(false)
 }
 
 const distributePosts = (newPosts) => {
-  leftColumnPosts.value = []
-  rightColumnPosts.value = []
-  leftHeight = 0
-  rightHeight = 0
   newPosts.forEach(post => {
+    let h = 400
+    const match = post.imageUrls[0]?.match(/_w(\d+)_h(\d+)/)
+    if (match) {
+      const w = parseInt(match[1])
+      const h_orig = parseInt(match[2])
+      h = 340 * Math.max(0.75, Math.min(1.33, h_orig / w))
+    }
+    
     if (leftHeight <= rightHeight) {
       leftColumnPosts.value.push(post)
-      leftHeight += 400
+      leftHeight += h
     } else {
       rightColumnPosts.value.push(post)
-      rightHeight += 400
+      rightHeight += h
     }
   })
 }
 
+const goToDetail = (id) => uni.navigateTo({ url: `/pages/post-detail/post-detail?id=${id}` })
 const goBack = () => uni.navigateBack()
 </script>
 
@@ -163,6 +204,14 @@ const goBack = () => uni.navigateBack()
   padding: 20rpx;
   gap: 20rpx;
   .column { flex: 1; display: flex; flex-direction: column; gap: 20rpx; }
+}
+
+.loading-status {
+  text-align: center;
+  padding: 20rpx;
+  font-size: 24rpx;
+  opacity: 0.5;
+  color: var(--text-main);
 }
 </style>
 
