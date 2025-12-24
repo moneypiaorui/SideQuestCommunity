@@ -81,9 +81,10 @@ services:
 
   # --- 前端与网关代理 ---
   nginx:
-    build:
-      context: ../../frontend/sidequest-mini
-      dockerfile: Dockerfile
+    image: nginx
+    # build:
+    #   context: ../../frontend/sidequest-mini
+    #   dockerfile: Dockerfile
     container_name: sidequest-nginx
     ports:
       - "80:80"
