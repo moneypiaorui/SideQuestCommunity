@@ -72,11 +72,22 @@ const request = (options) => {
         ...options.header
       },
       success: (res) => {
-        if (res.data.code === 200) {
-          resolve(res.data.data)
-        } else if (res.data.code === 401) {
+        // 兼容业务码 (res.data.code) 和 HTTP 状态码 (res.statusCode)
+        const code = res.data?.code || res.statusCode
+        
+        if (code === 200 || res.statusCode === 200) {
+          resolve(res.data?.data || res.data)
+        } else if (code === 401 || res.statusCode === 401 || code === 403 || res.statusCode === 403) {
           bus.openLogin()
-          reject(res.data)
+          // 监听登录成功事件，完成后刷新当前页面
+          uni.$once('loginSuccess', () => {
+            const pages = getCurrentPages()
+            const curPage = pages[pages.length - 1]
+            if (curPage && typeof curPage.onLoad === 'function') {
+              curPage.onLoad(curPage.options)
+            }
+          })
+          reject(res.data || { message: 'Unauthorized' })
         } else {
           uni.showToast({
             title: res.data.message || '请求失败',

@@ -220,21 +220,21 @@ const handleLogout = () => {
 
 const confirmLogout = () => {
   showLogoutModal.value = false
-  uni.removeStorageSync('token')
-  uni.removeStorageSync('userInfo')
+        uni.removeStorageSync('token')
+        uni.removeStorageSync('userInfo')
   uni.removeStorageSync('userId')
-  user.value = {}
+        user.value = {}
   
-  uni.showToast({
-    title: '已退出登录',
-    icon: 'none'
-  })
+        uni.showToast({
+          title: '已退出登录',
+          icon: 'none'
+        })
   
-  setTimeout(() => {
+        setTimeout(() => {
     uni.reLaunch({
-      url: '/pages/index/index'
-    })
-  }, 500)
+            url: '/pages/index/index'
+          })
+        }, 500)
 }
 </script>
 

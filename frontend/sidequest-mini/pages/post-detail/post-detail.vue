@@ -51,12 +51,14 @@
       <!-- 评论区修复 -->
       <view class="comments-section brutal-card">
         <text class="section-title">评论 ({{ comments.length }})</text>
-        <view v-if="comments.length === 0" class="empty-comments">暂无评论，快来抢沙发~</view>
-        <view v-for="c in comments" :key="c.id" class="comment-item">
-          <image :src="c.avatar" class="comment-avatar brutal-card" @click="goToUserProfile(c.userId)" />
-          <view class="comment-body">
-            <text class="comment-user">{{ c.nickname }}</text>
-            <text class="comment-text">{{ c.content }}</text>
+        <view class="comments-list">
+          <view v-if="comments.length === 0" class="empty-comments">暂无评论，快来抢沙发~</view>
+          <view v-for="c in comments" :key="c.id" class="comment-item">
+            <image :src="c.avatar" class="comment-avatar brutal-card" @click="goToUserProfile(c.userId)" />
+            <view class="comment-body">
+              <text class="comment-user">{{ c.nickname }}</text>
+              <text class="comment-text">{{ c.content }}</text>
+            </view>
           </view>
         </view>
       </view>
@@ -255,9 +257,49 @@ const submitComment = async () => {
     .tag-item { padding: 8rpx 20rpx; font-size: 24rpx; background: var(--bg-main); color: var(--primary); border-radius: 12rpx; font-weight: 600; }
   }
 }
-.comments-section { margin: 20rpx; padding: 30rpx; .section-title { font-size: 30rpx; font-weight: 800; margin-bottom: 30rpx; color: var(--text-main); } 
+.comments-section { 
+  margin: 20rpx; 
+  padding: 30rpx; 
+  
+  .section-title { 
+    font-size: 30rpx; 
+    font-weight: 800; 
+    margin-bottom: 40rpx; 
+    color: var(--text-main); 
+    display: block; 
+  } 
+
+  .comments-list {
+    margin-top: 20rpx;
+  }
+  
   .empty-comments { text-align: center; padding: 40rpx; opacity: 0.4; font-size: 24rpx; }
-  .comment-item { display: flex; gap: 20rpx; margin-bottom: 30rpx; .comment-avatar { width: 64rpx; height: 64rpx; border-radius: 50%; flex-shrink: 0; } .comment-user { font-size: 26rpx; font-weight: 800; color: var(--text-main); margin-bottom: 12rpx; display: block; } .comment-text { font-size: 26rpx; color: var(--text-main); line-height: 1.4; } } 
+  .comment-item { 
+    display: flex; 
+    gap: 20rpx; 
+    margin-bottom: 40rpx; 
+    
+    .comment-avatar { 
+      width: 64rpx; 
+      height: 64rpx; 
+      border-radius: 50%; 
+      flex-shrink: 0; 
+    } 
+    
+    .comment-user { 
+      font-size: 26rpx; 
+      font-weight: 800; 
+      color: var(--text-main); 
+      margin-bottom: 12rpx; 
+      display: block; 
+    } 
+    
+    .comment-text { 
+      font-size: 26rpx; 
+      color: var(--text-main); 
+      line-height: 1.4; 
+    } 
+  } 
 }
 .footer { position: fixed; bottom: 0; left: 0; right: 0; height: 130rpx; background: var(--surface); display: flex; align-items: center; padding: 0 30rpx; gap: 30rpx; border-radius: 48rpx 48rpx 0 0; z-index: 100; border-top: 4rpx solid #000; .comment-input { flex: 1; height: 80rpx; justify-content: flex-start; padding-left: 30rpx; .placeholder { font-size: 26rpx; opacity: 0.5; color: var(--text-main); } } .action-btn { display: flex; flex-direction: column; align-items: center; color: var(--text-main); .count { font-size: 20rpx; font-weight: 800; margin-top: 4rpx; } } }
 

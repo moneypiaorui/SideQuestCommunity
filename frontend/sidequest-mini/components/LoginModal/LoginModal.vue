@@ -115,12 +115,6 @@ const handleSubmit = async () => {
       bus.closeLogin()
       // 触发全局登录成功事件
       uni.$emit('loginSuccess')
-      // 兼容非 setup 页面
-      const pages = getCurrentPages()
-      const curPage = pages[pages.length - 1]
-      if (curPage && curPage.onLoad) {
-        curPage.onLoad(curPage.options)
-      }
     }, 1500)
   } catch (err) {
   } finally {
