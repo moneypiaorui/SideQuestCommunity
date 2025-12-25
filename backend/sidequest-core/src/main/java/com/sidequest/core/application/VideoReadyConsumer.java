@@ -19,19 +19,24 @@ public class VideoReadyConsumer {
     private final PostMapper postMapper;
 
     @KafkaListener(topics = "video-ready-topic", groupId = "core-group")
-    public void onVideoReady(@Header(KafkaHeaders.RECEIVED_KEY) String mediaIdStr, @Payload String hlsUrl) {
-        log.info("Received video ready event for mediaId: {}, HLS URL: {}", mediaIdStr, hlsUrl);
+    public void onVideoReady(@Header(KafkaHeaders.RECEIVED_KEY) String mediaIdStr, @Payload String payload) {
+        log.info("Received video ready event for mediaId: {}, payload: {}", mediaIdStr, payload);
         try {
             Long mediaId = Long.parseLong(mediaIdStr);
             
-            // 更新所有关联该 mediaId 的帖子视频地址为 HLS 地址
+            // 简单解析 JSON
+            String hlsUrl = payload.contains("videoUrl\":\"") ? payload.split("videoUrl\":\"")[1].split("\"")[0] : "";
+            String coverUrl = payload.contains("videoCoverUrl\":\"") ? payload.split("videoCoverUrl\":\"")[1].split("\"")[0] : "";
+
+            // 更新所有关联该 mediaId 的帖子视频地址为 HLS 地址，并同步封面图
             postMapper.update(null, new LambdaUpdateWrapper<PostDO>()
                     .eq(PostDO::getMediaId, mediaId)
-                    .set(PostDO::getVideoUrl, hlsUrl));
+                    .set(PostDO::getVideoUrl, hlsUrl)
+                    .set(!coverUrl.isEmpty(), PostDO::getVideoCoverUrl, coverUrl));
             
-            log.info("Successfully updated post video URL to HLS for mediaId: {}", mediaId);
+            log.info("Successfully updated post video and cover URL for mediaId: {}", mediaId);
         } catch (Exception e) {
-            log.error("Failed to update post video URL for mediaId: {}", mediaIdStr, e);
+            log.error("Failed to update post media for mediaId: {}", mediaIdStr, e);
         }
     }
 }

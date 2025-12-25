@@ -182,8 +182,36 @@ public class MediaService {
                 throw new RuntimeException("FFmpeg processing failed with exit code " + exitCode);
             }
 
-            // 3. 上传切片后的文件 (.m3u8 和 .ts)
-            log.info("Uploading HLS slices for mediaId: {}", mediaId);
+            // 2.5 提取第一帧作为封面图
+            log.info("Extracting cover image for mediaId: {}", mediaId);
+            String coverFileName = "cover.jpg";
+            Path coverPath = tempDir.resolve(coverFileName);
+            ProcessBuilder coverPb = new ProcessBuilder(
+                "ffmpeg", "-i", inputPath.toString(),
+                "-ss", "00:00:01", "-vframes", "1",
+                "-q:v", "2", coverPath.toString()
+            );
+            coverPb.start().waitFor(30, TimeUnit.SECONDS);
+
+            // 3. 上传切片后的文件 (.m3u8 和 .ts) 以及封面图
+            log.info("Uploading HLS slices and cover for mediaId: {}", mediaId);
+            String finalCoverUrl = "";
+            
+            // 上传封面
+            if (Files.exists(coverPath)) {
+                String coverObjectPath = "hls/" + mediaId + "/" + coverFileName;
+                minioClient.uploadObject(
+                    UploadObjectArgs.builder()
+                        .bucket(bucket)
+                        .object(coverObjectPath)
+                        .filename(coverPath.toString())
+                        .contentType("image/jpeg")
+                        .build()
+                );
+                finalCoverUrl = (publicEndpoint != null && !publicEndpoint.isBlank() ? publicEndpoint : endpoint) 
+                        + "/" + bucket + "/" + coverObjectPath;
+            }
+
             Files.list(tempDir).forEach(path -> {
                 String fileName = path.getFileName().toString();
                 if (fileName.endsWith(".m3u8") || fileName.endsWith(".ts")) {
@@ -212,9 +240,10 @@ public class MediaService {
             mediaMapper.updateById(mediaDO);
             log.info("Successfully completed HLS processing for mediaId: {}. URL: {}", mediaId, hlsUrl);
 
-            // 5. 发送 Kafka 消息通知核心服务更新视频地址
-            kafkaTemplate.send("video-ready-topic", mediaId.toString(), hlsUrl);
-            log.info("Sent video-ready notification for mediaId: {}", mediaId);
+            // 5. 发送 Kafka 消息通知核心服务更新视频地址和封面地址
+            String payload = String.format("{\"videoUrl\":\"%s\", \"videoCoverUrl\":\"%s\"}", hlsUrl, finalCoverUrl);
+            kafkaTemplate.send("video-ready-topic", mediaId.toString(), payload);
+            log.info("Sent video-ready notification for mediaId: {}. Payload: {}", mediaId, payload);
 
         } catch (Exception e) {
             log.error("HLS processing failed for mediaId: {}", mediaId, e);

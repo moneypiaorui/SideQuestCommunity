@@ -1,23 +1,13 @@
 <template>
   <view class="brutal-card" @click="handleCardClick">
     <view class="media-container" :style="{ height: cardHeight + 'rpx' }">
-      <video 
-        v-if="isPlaying"
-        id="videoPlayer"
-        :src="post.videoUrl" 
-        class="main-video"
-        autoplay
-        controls
-        @click.stop
-      />
       <image 
-        v-else
         :src="post.imageUrls[0] || post.videoCoverUrl" 
         mode="aspectFill" 
         class="main-image"
         @load="onImageLoad"
       />
-      <view v-if="post.videoUrl && !isPlaying" class="video-badge">
+      <view v-if="post.videoUrl" class="video-badge">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
           <polygon points="5 3 19 12 5 21 5 3"></polygon>
         </svg>
@@ -68,16 +58,10 @@ const onImageLoad = (e) => {
 }
 
 const handleCardClick = () => {
-  if (props.post.videoUrl && !isPlaying.value) {
-    isPlaying.value = true
-  } else {
-    emit('click')
-  }
+  emit('click')
 }
 
 const cardHeight = computed(() => {
-  if (isPlaying.value) return 600 // 展开后的高度
-  
   if (!imgWidth.value || !imgHeight.value) {
     // 检查是否有 mock 数据中的宽高信息
     const match = props.post.imageUrls[0]?.match(/_w(\d+)_h(\d+)/)

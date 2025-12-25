@@ -136,20 +136,20 @@ const chooseMedia = () => {
             count: 1,
             success: (imgRes) => {
               const file = imgRes.tempFiles[0]
-              tempMedia.value = {
-                path: file.path,
-                type: 'image',
-                size: file.size,
-                width: 0,
-                height: 0
-              }
-              uni.getImageInfo({
-                src: file.path,
-                success: (info) => {
-                  tempMedia.value.width = info.width
-                  tempMedia.value.height = info.height
-                }
-              })
+        tempMedia.value = {
+          path: file.path,
+          type: 'image',
+          size: file.size,
+          width: 0,
+          height: 0
+        }
+        uni.getImageInfo({
+          src: file.path,
+          success: (info) => {
+            tempMedia.value.width = info.width
+            tempMedia.value.height = info.height
+          }
+        })
             }
           })
         } else {
@@ -236,57 +236,57 @@ const submit = async () => {
       // 提取真实扩展名
       if (filePath && filePath.includes('.')) {
         const parts = filePath.split('?')[0].split('.')
-        const lastPart = parts.pop().toLowerCase()
+      const lastPart = parts.pop().toLowerCase()
         if (['jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'webp', 'm4v'].includes(lastPart)) {
-          ext = lastPart
-        }
+        ext = lastPart
+      }
       } else if (fileType === 'image') {
         ext = 'jpg'
       } else if (fileType === 'video') {
-        ext = 'mp4'
-      }
-      
+      ext = 'mp4'
+    }
+    
       const fileName = `post_${Date.now()}_${Math.floor(Math.random() * 1000)}.${ext}`
-      const uploadUrl = await request({
-        url: `/api/media/upload-url?fileName=${encodeURIComponent(fileName)}`
-      })
-
-      const binaryData = await new Promise((resolve, reject) => {
+    const uploadUrl = await request({
+      url: `/api/media/upload-url?fileName=${encodeURIComponent(fileName)}`
+    })
+    
+    const binaryData = await new Promise((resolve, reject) => {
         if (typeof window !== 'undefined' && filePath.startsWith('blob:')) {
           // H5 Blob 处理
           fetch(filePath).then(res => res.arrayBuffer()).then(resolve).catch(reject)
         } else if (typeof window !== 'undefined') {
           // 普通 H5 文件处理
           fetch(filePath).then(res => res.arrayBuffer()).then(resolve).catch(reject)
-        } else {
+      } else {
           // 小程序/App 离线文件读取
           uni.getFileSystemManager().readFile({ 
             filePath, 
-            success: res => resolve(res.data), 
+          success: res => resolve(res.data),
             fail: (err) => {
               console.error('File read failed:', err)
               reject(new Error('无法读取本地文件: ' + filePath))
             } 
-          })
-        }
-      })
-
-      await new Promise((resolve, reject) => {
-        uni.request({
-          url: uploadUrl,
-          method: 'PUT',
-          data: binaryData,
-          header: { 
-            'Content-Type': fileType === 'video' ? 'video/mp4' : (ext === 'png' ? 'image/png' : 'image/jpeg') 
-          },
-          success: (res) => {
-            if (res.statusCode === 200 || res.statusCode === 204) resolve(res)
-            else reject(new Error('上传到存储服务失败: ' + res.statusCode))
-          },
-          fail: (err) => reject(new Error('网络请求失败: ' + err.errMsg))
         })
+      }
+    })
+
+    await new Promise((resolve, reject) => {
+      uni.request({
+        url: uploadUrl,
+        method: 'PUT',
+        data: binaryData,
+        header: {
+            'Content-Type': fileType === 'video' ? 'video/mp4' : (ext === 'png' ? 'image/png' : 'image/jpeg') 
+        },
+        success: (res) => {
+          if (res.statusCode === 200 || res.statusCode === 204) resolve(res)
+            else reject(new Error('上传到存储服务失败: ' + res.statusCode))
+        },
+          fail: (err) => reject(new Error('网络请求失败: ' + err.errMsg))
       })
-      
+    })
+    
       return uploadUrl.split('?')[0]
     }
 

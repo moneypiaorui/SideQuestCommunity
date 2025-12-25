@@ -19,11 +19,13 @@
               :src="post.videoUrl"
               :poster="post.videoCoverUrl"
               :danmu-list="danmuList"
+              autoplay
               enable-danmu
               danmu-btn
               controls
+              object-fit="contain"
               @timeupdate="onTimeUpdate"
-              :style="{ height: swiperHeight }"
+              :style="{ height: swiperHeight, width: '100%' }"
             />
           </template>
           <swiper v-else circular indicator-dots class="media-swiper" :style="{ height: swiperHeight }">
