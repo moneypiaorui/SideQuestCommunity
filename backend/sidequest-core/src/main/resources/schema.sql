@@ -1,7 +1,6 @@
 CREATE TABLE IF NOT EXISTS t_post (
     id BIGSERIAL PRIMARY KEY,
     author_id BIGINT NOT NULL,
-    author_name VARCHAR(64),
     title VARCHAR(255),
     content TEXT,
     section_id BIGINT,

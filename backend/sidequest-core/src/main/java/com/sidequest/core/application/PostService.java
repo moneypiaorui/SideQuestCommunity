@@ -355,19 +355,6 @@ public class PostService {
             throw new RuntimeException("Content violates community rules");
         }
 
-        // 2. 获取真实的作者昵称和头像
-        String nickname = "Unknown";
-        String avatar = "";
-        try {
-            Result<IdentityClient.UserDTO> userResult = identityClient.getUserById(Long.parseLong(userId));
-            if (userResult.getCode() == 200 && userResult.getData() != null) {
-                nickname = userResult.getData().getNickname();
-                avatar = userResult.getData().getAvatar();
-            }
-        } catch (Exception e) {
-            log.warn("Failed to fetch user details for userId: {}", userId, e);
-        }
-
         // 3. 构造领域对象并调用其业务方法
         Post post = Post.builder()
                 .authorId(Long.parseLong(userId))
@@ -386,8 +373,6 @@ public class PostService {
         // 4. 持久化
         PostDO postDO = new PostDO();
         postDO.setAuthorId(post.getAuthorId());
-        postDO.setAuthorName(nickname);
-        postDO.setAuthorAvatar(avatar);
         postDO.setTitle(post.getTitle());
         postDO.setContent(post.getContent());
         postDO.setSectionId(post.getSectionId());
