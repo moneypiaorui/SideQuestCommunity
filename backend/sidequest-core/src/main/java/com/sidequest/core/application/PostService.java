@@ -131,6 +131,20 @@ public class PostService {
         return voPage;
     }
 
+    public void syncAllPostsToSearch() {
+        List<PostDO> allPosts = postMapper.selectList(new LambdaQueryWrapper<PostDO>()
+                .eq(PostDO::getStatus, PostDO.STATUS_NORMAL));
+        
+        for (PostDO postDO : allPosts) {
+            try {
+                String postJson = objectMapper.writeValueAsString(postDO);
+                kafkaTemplate.send("post-topic", postDO.getId().toString(), postJson);
+            } catch (Exception e) {
+                log.error("Failed to resync post {}", postDO.getId(), e);
+            }
+        }
+    }
+
     private PostVO convertToVO(PostDO doItem, String currentUserId) {
         PostVO vo = new PostVO();
         BeanUtils.copyProperties(doItem, vo);
@@ -238,8 +252,13 @@ public class PostService {
         LambdaQueryWrapper<PostDO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.in(PostDO::getId, postIds);
         queryWrapper.eq(PostDO::getStatus, PostDO.STATUS_NORMAL);
-        // 按收藏顺序排序
-        queryWrapper.last("ORDER BY FIELD(id, " + postIds.stream().map(String::valueOf).collect(Collectors.joining(",")) + ")");
+        // PostgreSQL 不支持 FIELD 函数，使用 CASE WHEN 保持顺序
+        StringBuilder orderBy = new StringBuilder("CASE id ");
+        for (int i = 0; i < postIds.size(); i++) {
+            orderBy.append("WHEN ").append(postIds.get(i)).append(" THEN ").append(i).append(" ");
+        }
+        orderBy.append("END");
+        queryWrapper.last("ORDER BY " + orderBy.toString());
         
         return getPostVOPage(current, size, userId, queryWrapper);
     }
@@ -256,7 +275,14 @@ public class PostService {
         LambdaQueryWrapper<PostDO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.in(PostDO::getId, postIds);
         queryWrapper.eq(PostDO::getStatus, PostDO.STATUS_NORMAL);
-        queryWrapper.last("ORDER BY FIELD(id, " + postIds.stream().map(String::valueOf).collect(Collectors.joining(",")) + ")");
+        
+        // PostgreSQL 不支持 FIELD 函数，使用 CASE WHEN 保持顺序
+        StringBuilder orderBy = new StringBuilder("CASE id ");
+        for (int i = 0; i < postIds.size(); i++) {
+            orderBy.append("WHEN ").append(postIds.get(i)).append(" THEN ").append(i).append(" ");
+        }
+        orderBy.append("END");
+        queryWrapper.last("ORDER BY " + orderBy.toString());
         
         return getPostVOPage(current, size, userId, queryWrapper);
     }

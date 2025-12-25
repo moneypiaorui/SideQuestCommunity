@@ -73,4 +73,10 @@ public class PostController {
         postService.handleCreatePost(userId, dto);
         return Result.success("Post created successfully");
     }
+
+    @PostMapping("/admin/posts/sync")
+    public Result<String> syncPostsToSearch() {
+        postService.syncAllPostsToSearch();
+        return Result.success("Sync started");
+    }
 }
