@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/admin/posts")
+@RequestMapping("/api/core/admin/posts")
 @RequiredArgsConstructor
 public class AdminController {
     private final PostService postService;

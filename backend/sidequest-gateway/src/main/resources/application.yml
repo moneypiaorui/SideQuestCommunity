@@ -35,6 +35,10 @@ spring:
           uri: lb://chat-service
           predicates:
             - Path=/api/chat/**
+        - id: analytics-route
+          uri: lb://analytics-service
+          predicates:
+            - Path=/api/analytics/**
     loadbalancer:
       ribbon:
         enabled: false # 明确禁用 Ribbon，使用 Spring Cloud LoadBalancer
