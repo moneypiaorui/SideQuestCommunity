@@ -104,6 +104,7 @@ const handleSubmit = async () => {
     
     uni.setStorageSync('token', res.token)
     uni.setStorageSync('userInfo', res)
+    uni.setStorageSync('userId', res.userId)
     
     // 显示更高级别的成功弹窗
     successMsg.value = mode.value === 'register' ? '注册并登录成功' : '登录成功'

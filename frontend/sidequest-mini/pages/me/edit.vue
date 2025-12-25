@@ -29,6 +29,18 @@
             <textarea v-model="user.signature" class="brutal-textarea brutal-card" placeholder="向大家介绍一下你自己..." maxlength="50" />
           </view>
         </view>
+
+        <view class="input-group">
+          <text class="section-title">修改密码 (不改请留空)</text>
+          <view class="input-item">
+            <text class="label">当前密码</text>
+            <input v-model="passwords.oldPassword" type="password" class="brutal-input brutal-card" placeholder="请输入当前密码" />
+          </view>
+          <view class="input-item">
+            <text class="label">新密码</text>
+            <input v-model="passwords.newPassword" type="password" class="brutal-input brutal-card" placeholder="请输入新密码" />
+          </view>
+        </view>
         
         <button class="brutal-btn primary save-btn" @click="save">保存所有修改</button>
       </view>
@@ -43,6 +55,7 @@ import request from '@/utils/request'
 
 const isDark = ref(uni.getStorageSync('isDark') || false); const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight)
 const user = ref({ nickname: '', avatar: '', signature: '' })
+const passwords = ref({ oldPassword: '', newPassword: '' })
 
 onMounted(async () => { 
   const res = await request({ url: '/api/identity/me' })
@@ -107,6 +120,7 @@ const changeAvatar = () => {
 
 const save = async () => {
   try {
+    // 1. 保存个人资料
     await request({ 
       url: '/api/identity/profile', 
       method: 'PUT', 
@@ -116,6 +130,22 @@ const save = async () => {
         signature: user.value.signature
       } 
     })
+
+    // 2. 如果填写了密码，则修改密码
+    if (passwords.value.oldPassword && passwords.value.newPassword) {
+      await request({
+        url: '/api/identity/password',
+        method: 'PUT',
+        data: {
+          oldPassword: passwords.value.oldPassword,
+          newPassword: passwords.value.newPassword
+        }
+      })
+    } else if (passwords.value.oldPassword || passwords.value.newPassword) {
+      uni.showToast({ title: '请同时填写当前密码和新密码', icon: 'none' })
+      return
+    }
+
     uni.showToast({ title: '资料已更新', icon: 'success' })
     setTimeout(() => uni.navigateBack(), 1000)
   } catch (err) {}
@@ -137,6 +167,15 @@ const goBack = () => uni.navigateBack()
   .label { font-size: 28rpx; font-weight: 800; margin-bottom: 16rpx; display: block; color: var(--text-main); }
   .brutal-input { height: 100rpx; padding: 0 30rpx; font-size: 28rpx; background: var(--surface); }
   .brutal-textarea { height: 200rpx; padding: 30rpx; font-size: 28rpx; width: 100%; box-sizing: border-box; background: var(--surface); }
+}
+.section-title {
+  font-size: 32rpx;
+  font-weight: 900;
+  margin: 20rpx 0;
+  display: block;
+  color: var(--primary);
+  border-left: 8rpx solid var(--primary);
+  padding-left: 20rpx;
 }
 .save-btn { width: 100%; height: 100rpx; font-size: 32rpx; }
 </style>

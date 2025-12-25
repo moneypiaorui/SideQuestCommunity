@@ -47,7 +47,7 @@
           :key="i"
           class="tab-item"
           :class="{ 'active': activeContentTab === i }"
-          @click="activeContentTab = i"
+          @click="onTabChange(i)"
         >
           <text>{{ t }}</text>
         </view>
@@ -83,6 +83,7 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import BrutalCard from '@/components/BrutalCard/BrutalCard.vue'
 import BrutalTabBar from '@/components/BrutalTabBar/BrutalTabBar.vue'
 import request from '@/utils/request'
+import { bus } from '@/utils/bus'
 
 const isDark = ref(uni.getStorageSync('isDark') || false)
 const statusBarHeight = ref(0)
@@ -115,15 +116,44 @@ onMounted(async () => {
   const sys = uni.getSystemInfoSync()
   statusBarHeight.value = sys.statusBarHeight
   
+  await fetchUserInfo()
+  await fetchContent(true)
+})
+
+const fetchUserInfo = async () => {
   try {
     const userInfo = await request({ url: '/api/identity/me' })
     user.value = userInfo
-    
-    // Fetch user posts
-    const data = await request({ 
-      url: `/api/search/user/posts?userId=${userInfo.id}&size=20` 
-    })
-    distributePosts(data.content.map(p => {
+  } catch (err) {}
+}
+
+const onTabChange = (index) => {
+  if (activeContentTab.value === index) return
+  activeContentTab.value = index
+  fetchContent(true)
+}
+
+const fetchContent = async (reset = false) => {
+  if (reset) {
+    leftColumnPosts.value = []
+    rightColumnPosts.value = []
+    leftHeight = 0
+    rightHeight = 0
+  }
+
+  try {
+    let url = ''
+    if (activeContentTab.value === 0) {
+      url = `/api/search/user/posts?userId=${user.value.id}&size=20`
+    } else if (activeContentTab.value === 1) {
+      url = `/api/core/interactions/favorites?current=1&size=20`
+    } else {
+      url = `/api/core/interactions/likes?current=1&size=20`
+    }
+
+    const res = await request({ url })
+    const records = res.content || res.records || []
+    distributePosts(records.map(p => {
       let urls = p.imageUrls
       if (typeof urls === 'string') {
         try { urls = JSON.parse(urls) } catch (e) { urls = [urls] }
@@ -131,7 +161,7 @@ onMounted(async () => {
       return { ...p, imageUrls: urls || [] }
     }))
   } catch (err) {}
-})
+}
 
 const distributePosts = (newPosts) => {
   newPosts.forEach(post => {

@@ -52,6 +52,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import request from '@/utils/request'
 import BrutalCard from '@/components/BrutalCard/BrutalCard.vue'
 
@@ -67,7 +68,14 @@ let rightHeight = 0
 
 const loading = ref(false)
 const noMore = ref(false)
-let currentPage = 1
+let currentPage = 0
+
+onLoad((options) => {
+  if (options.keyword) {
+    keyword.value = decodeURIComponent(options.keyword)
+    onSearch(true)
+  }
+})
 
 onMounted(() => {
   const sys = uni.getSystemInfoSync()
@@ -79,7 +87,7 @@ const onSearch = async (reset = true) => {
   if (loading.value || (noMore.value && !reset)) return
   
   if (reset) {
-    currentPage = 1
+    currentPage = 0
     noMore.value = false
     leftColumnPosts.value = []
     rightColumnPosts.value = []
@@ -99,10 +107,21 @@ const onSearch = async (reset = true) => {
       noMore.value = true
     } else {
       results.value = [...results.value, ...records]
-      distributePosts(records.map(p => ({
-        ...p,
-        imageUrls: typeof p.imageUrls === 'string' ? JSON.parse(p.imageUrls) : (p.imageUrls || [])
-      })))
+      distributePosts(records.map(p => {
+        let urls = []
+        if (p.imageUrls) {
+          if (typeof p.imageUrls === 'string') {
+            try {
+              urls = p.imageUrls.startsWith('[') ? JSON.parse(p.imageUrls) : p.imageUrls.split(',')
+            } catch (e) {
+              urls = [p.imageUrls]
+            }
+          } else {
+            urls = p.imageUrls
+          }
+        }
+        return { ...p, imageUrls: urls }
+      }))
       currentPage++
     }
   } catch (err) {

@@ -27,7 +27,11 @@
               <text class="time">12-24</text>
             </view>
           </view>
-          <view class="follow-btn brutal-btn" :class="{ 'active': post.isFollowing }" @click="handleFollow">
+          <!-- 自己不显示关注按钮 -->
+          <view v-if="post.authorId && String(post.authorId) !== String(currentUserId)" 
+                class="follow-btn brutal-btn" 
+                :class="{ 'active': post.isFollowing }" 
+                @click="handleFollow">
             {{ post.isFollowing ? '已关注' : '关注' }}
           </view>
         </view>
@@ -35,6 +39,12 @@
         <view class="content-box">
           <text class="post-title">{{ post.title }}</text>
           <text class="post-content">{{ post.content }}</text>
+          
+          <view v-if="post.tags && post.tags.length" class="tag-list">
+            <view v-for="tag in post.tags" :key="tag" class="tag-item brutal-btn" @click="goToTagSearch(tag)">
+              # {{ tag }}
+            </view>
+          </view>
         </view>
       </view>
       
@@ -104,6 +114,7 @@ const comments = ref([])
 const showCommentPopup = ref(false)
 const commentContent = ref('')
 const submittingComment = ref(false)
+const currentUserId = ref(uni.getStorageSync('userId'))
 
 // 动态计算 Swiper 高度，最小 3:4
 const swiperHeight = computed(() => {
@@ -118,6 +129,9 @@ const swiperHeight = computed(() => {
 })
 
 onMounted(async () => {
+  uni.$on('loginSuccess', () => {
+    currentUserId.value = uni.getStorageSync('userId')
+  })
   const pages = getCurrentPages(); const options = pages[pages.length - 1].options
   const id = options.id || 1
   
@@ -129,6 +143,8 @@ onMounted(async () => {
 
   try {
     const res = await request({ url: `/api/core/posts/${id}` })
+    // 适配后端不同的序列化字段名
+    res.isFollowing = res.isFollowing || res.following || false
     post.value = { ...post.value, ...res } // 合并数据，保留初始状态直到加载完成
     comments.value = await request({ url: `/api/core/interactions/comments?postId=${id}` }) || []
   } catch (err) {}
@@ -152,14 +168,26 @@ const handleFavorite = async () => {
 
 const handleFollow = async () => {
   const token = uni.getStorageSync('token'); if (!token) { bus.openLogin(); return }
-  post.value.isFollowing = !post.value.isFollowing
-  await request({ 
-    url: post.value.isFollowing ? `/api/identity/users/${post.value.authorId}/follow` : `/api/identity/users/${post.value.authorId}/unfollow`, 
-    method: 'POST' 
-  })
+  
+  const originalState = post.value.isFollowing
+  try {
+    // 先改状态（为了流畅感，但需要处理失败）
+    post.value.isFollowing = !originalState
+    await request({ 
+      url: post.value.isFollowing ? `/api/identity/users/${post.value.authorId}/follow` : `/api/identity/users/${post.value.authorId}/unfollow`, 
+      method: 'POST' 
+    })
+  } catch (err) {
+    // 失败则回退
+    post.value.isFollowing = originalState
+    if (err.message && err.message.includes('cannot follow yourself')) {
+      uni.showToast({ title: '不能关注自己', icon: 'none' })
+    }
+  }
 }
 
 const goToUserProfile = (id) => uni.navigateTo({ url: `/pages/user-profile/user-profile?userId=${id}` })
+const goToTagSearch = (tag) => uni.navigateTo({ url: `/pages/search/search?keyword=${encodeURIComponent(tag)}` })
 const goBack = () => uni.navigateBack()
 
 const submitComment = async () => {
@@ -203,9 +231,30 @@ const submitComment = async () => {
   }
 }
 .author-row { padding: 30rpx; display: flex; align-items: center; justify-content: space-between; border-bottom: 2rpx solid #eee; .author-info { display: flex; align-items: center; gap: 20rpx; .avatar { width: 84rpx; height: 84rpx; border-radius: 50%; } .nickname { font-size: 30rpx; font-weight: 800; color: var(--text-main); } .time { font-size: 22rpx; opacity: 0.5; color: var(--text-main); } } 
-  .follow-btn { width: 140rpx; height: 68rpx; font-size: 26rpx; background: var(--primary); color: #fff; box-shadow: 4rpx 4rpx 0 #000; &.active { background: var(--bg-main); color: #666; box-shadow: none; transform: none; border-color: #ccc; } }
+  .follow-btn { 
+    width: 140rpx; 
+    height: 68rpx; 
+    font-size: 26rpx; 
+    background: var(--primary); 
+    color: #fff; 
+    box-shadow: 4rpx 4rpx 0 #000;
+    border: 4rpx solid #000;
+    transition: all 0.1s;
+    
+    &.active { 
+      background: var(--bg-main); 
+      color: #666; 
+      box-shadow: 0 0 0 #000; // 保持占位，避免晃动
+      transform: translate(2rpx, 2rpx); // 轻微下沉感
+      border-color: #ccc;
+    }
+  }
 }
-.content-box { padding: 30rpx; .post-title { font-size: 38rpx; font-weight: 900; margin-bottom: 20rpx; color: var(--text-main); } .post-content { font-size: 28rpx; line-height: 1.6; color: var(--text-main); opacity: 0.9; } }
+.content-box { padding: 30rpx; .post-title { font-size: 38rpx; font-weight: 900; margin-bottom: 20rpx; color: var(--text-main); } .post-content { font-size: 28rpx; line-height: 1.6; color: var(--text-main); opacity: 0.9; margin-bottom: 20rpx; } 
+  .tag-list { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: 20rpx;
+    .tag-item { padding: 8rpx 20rpx; font-size: 24rpx; background: var(--bg-main); color: var(--primary); border-radius: 12rpx; font-weight: 600; }
+  }
+}
 .comments-section { margin: 20rpx; padding: 30rpx; .section-title { font-size: 30rpx; font-weight: 800; margin-bottom: 30rpx; color: var(--text-main); } 
   .empty-comments { text-align: center; padding: 40rpx; opacity: 0.4; font-size: 24rpx; }
   .comment-item { display: flex; gap: 20rpx; margin-bottom: 30rpx; .comment-avatar { width: 64rpx; height: 64rpx; border-radius: 50%; flex-shrink: 0; } .comment-user { font-size: 26rpx; font-weight: 800; color: var(--text-main); margin-bottom: 12rpx; display: block; } .comment-text { font-size: 26rpx; color: var(--text-main); line-height: 1.4; } } 
