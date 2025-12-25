@@ -25,3 +25,39 @@ replay_pid*
 temp/
 
 **/unpackage/
+
+# Build output
+**/target/
+**/out/
+**/dist/
+**/build/
+
+# Frontend deps and artifacts
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# IDE/editor
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Env/local config
+.env
+.env.*
+
+# Logs
+logs/
+**/logs/
+
+# 数据库
+infra/docker-compose/postgres/data
+# 对象存储
+infra/docker-compose/minio/data

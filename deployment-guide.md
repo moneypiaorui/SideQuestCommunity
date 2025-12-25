@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS t_user (
     password VARCHAR(128) NOT NULL,
     nickname VARCHAR(64),
     avatar VARCHAR(255),
+    signature VARCHAR(255),
     role VARCHAR(20) DEFAULT 'USER',
     status INT DEFAULT 0, -- 0:正常, 1:封禁
     follower_count INT DEFAULT 0,
@@ -74,6 +75,9 @@ CREATE TABLE IF NOT EXISTS t_post (
     view_count INT DEFAULT 0,
     image_urls TEXT,
     video_url VARCHAR(255),
+    video_cover_url VARCHAR(255),
+    video_duration INT,
+    media_id BIGINT,
     tags VARCHAR(255),
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -158,6 +162,7 @@ CREATE TABLE IF NOT EXISTS t_chat_room_member (
     room_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
     last_read_message_id BIGINT DEFAULT 0,
+    join_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(room_id, user_id)
 );

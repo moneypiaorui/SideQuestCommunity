@@ -1,0 +1,1527 @@
+openapi: 3.0.3
+info:
+  title: SideQuestCommunity API
+  version: "1.0.0"
+  description: OpenAPI spec generated from backend controllers.
+servers:
+  - url: /
+tags:
+  - name: identity
+  - name: notifications
+  - name: core
+  - name: interactions
+  - name: admin
+  - name: search
+  - name: analytics
+  - name: moderation
+  - name: chat
+  - name: media
+  - name: mcp
+paths:
+  /api/identity/register:
+    post:
+      tags: [identity]
+      summary: Register user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+  /api/identity/login:
+    post:
+      tags: [identity]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultLoginVO"
+  /api/identity/me:
+    get:
+      tags: [identity]
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultUserVO"
+  /api/identity/users/{id}/public:
+    get:
+      tags: [identity]
+      summary: Get public profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultUserPublicDTO"
+  /api/identity/users/{id}/follow:
+    post:
+      tags: [identity]
+      summary: Follow user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+  /api/identity/users/{id}/unfollow:
+    post:
+      tags: [identity]
+      summary: Unfollow user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+  /api/identity/admin/users:
+    get:
+      tags: [admin, identity]
+      summary: Admin list users
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: current
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultPageUserVO"
+  /api/identity/users/{id}:
+    get:
+      tags: [identity]
+      summary: Get user by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultUserVO"
+  /api/identity/profile:
+    put:
+      tags: [identity]
+      summary: Update profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+  /api/identity/password:
+    put:
+      tags: [identity]
+      summary: Update password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePasswordRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+  /api/identity/me/following-ids:
+    get:
+      tags: [identity]
+      summary: Get current user following ids
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultListLong"
+  /api/identity/users/{id}/followers:
+    get:
+      tags: [identity]
+      summary: Get followers
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: current
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultPageUserVO"
+  /api/identity/users/{id}/following:
+    get:
+      tags: [identity]
+      summary: Get followings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: current
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultPageUserVO"
+  /api/identity/admin/users/{id}/ban:
+    post:
+      tags: [admin, identity]
+      summary: Ban user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+
+  /api/notifications/unread-count:
+    get:
+      tags: [notifications]
+      summary: Get unread counts
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultUnreadCountVO"
+  /api/notifications/mark-read:
+    post:
+      tags: [notifications]
+      summary: Mark notifications as read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+
+  /api/core/posts:
+    get:
+      tags: [core]
+      summary: List posts
+      parameters:
+        - name: current
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+        - name: sectionId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+        - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultPagePostVO"
+    post:
+      tags: [core]
+      summary: Create post
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePostDTO"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+  /api/core/posts/following:
+    get:
+      tags: [core]
+      summary: List posts from following
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: current
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultPagePostVO"
+  /api/core/sections:
+    get:
+      tags: [core]
+      summary: List sections
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultListSectionDO"
+  /api/core/tags/popular:
+    get:
+      tags: [core]
+      summary: List popular tags
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultListTagDO"
+  /api/core/posts/{id}:
+    get:
+      tags: [core]
+      summary: Get post by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultPostVO"
+  /api/core/admin/posts/sync:
+    post:
+      tags: [admin, core]
+      summary: Sync posts to search
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+
+  /api/core/interactions/comments:
+    get:
+      tags: [interactions]
+      summary: Get comments by post
+      parameters:
+        - name: postId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultListCommentVO"
+  /api/core/interactions/favorites:
+    get:
+      tags: [interactions]
+      summary: Get my favorites
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: current
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultPagePostVO"
+  /api/core/interactions/likes:
+    get:
+      tags: [interactions]
+      summary: Get my likes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: current
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultPagePostVO"
+  /api/core/interactions/comment:
+    post:
+      tags: [interactions]
+      summary: Add comment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommentRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+  /api/core/interactions/like:
+    post:
+      tags: [interactions]
+      summary: Like post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+  /api/core/interactions/favorite:
+    post:
+      tags: [interactions]
+      summary: Favorite post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: postId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: collectionId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+
+  /api/admin/posts:
+    get:
+      tags: [admin]
+      summary: Admin list posts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: current
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultPagePostDO"
+  /api/admin/posts/{id}/audit:
+    post:
+      tags: [admin]
+      summary: Audit post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: pass
+          in: query
+          required: true
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+  /api/admin/posts/{id}:
+    delete:
+      tags: [admin]
+      summary: Delete post
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+
+  /api/search/posts:
+    get:
+      tags: [search]
+      summary: Search posts by keyword
+      parameters:
+        - name: keyword
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultPagePostDoc"
+  /api/search/user/posts:
+    get:
+      tags: [search]
+      summary: Search posts by user
+      parameters:
+        - name: userId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultPagePostDoc"
+
+  /api/analytics/dashboard/stats:
+    get:
+      tags: [analytics]
+      summary: Dashboard stats
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultMapObject"
+  /api/analytics/dashboard/top-posts:
+    get:
+      tags: [analytics]
+      summary: Top posts
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultListMapObject"
+  /api/analytics/users/{id}/stats:
+    get:
+      tags: [analytics]
+      summary: User stats
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultMapObject"
+
+  /api/moderation/check:
+    post:
+      tags: [moderation]
+      summary: Check text moderation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultBoolean"
+
+  /api/chat/rooms:
+    get:
+      tags: [chat]
+      summary: Get chat rooms
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultListChatRoomVO"
+  /api/chat/rooms/find:
+    get:
+      tags: [chat]
+      summary: Find or create room
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: recipientId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultChatRoomVO"
+  /api/chat/rooms/{roomId}/messages:
+    get:
+      tags: [chat]
+      summary: Get messages
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: sinceId
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultListChatMessageDO"
+  /api/chat/rooms/{roomId}/send:
+    post:
+      tags: [chat]
+      summary: Send message
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultChatMessageDO"
+  /api/chat/rooms/{roomId}/read:
+    post:
+      tags: [chat]
+      summary: Mark room as read
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+
+  /api/media/list:
+    get:
+      tags: [media]
+      summary: Get media list by author
+      parameters:
+        - name: authorId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultListMediaDO"
+  /api/media/upload-url:
+    get:
+      tags: [media]
+      summary: Get upload URL
+      parameters:
+        - name: fileName
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+  /api/media/status/{id}:
+    get:
+      tags: [media]
+      summary: Get media status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultInteger"
+  /api/media/danmaku:
+    post:
+      tags: [media]
+      summary: Send danmaku
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DanmakuRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultString"
+    get:
+      tags: [media]
+      summary: Get danmaku in time range
+      parameters:
+        - name: videoId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: fromMs
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: toMs
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultListDanmakuVO"
+
+  /api/mcp/rpc:
+    post:
+      tags: [mcp]
+      summary: MCP JSON-RPC endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JsonRpcRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JsonRpcResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ResultString:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data: { type: string, nullable: true }
+    ResultInteger:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data: { type: integer, nullable: true }
+    ResultBoolean:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data: { type: boolean, nullable: true }
+    ResultLoginVO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/LoginVO"
+    ResultUserVO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/UserVO"
+    ResultUserPublicDTO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/UserPublicDTO"
+    ResultUnreadCountVO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/UnreadCountVO"
+    ResultListLong:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            type: integer
+            format: int64
+    ResultListSectionDO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SectionDO"
+    ResultListTagDO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TagDO"
+    ResultPostVO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/PostVO"
+    ResultPagePostVO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/PagePostVO"
+    ResultPagePostDO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/PagePostDO"
+    ResultPageUserVO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/PageUserVO"
+    ResultPagePostDoc:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/PagePostDoc"
+    ResultListCommentVO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommentVO"
+    ResultListChatRoomVO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatRoomVO"
+    ResultChatRoomVO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/ChatRoomVO"
+    ResultListChatMessageDO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessageDO"
+    ResultChatMessageDO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          $ref: "#/components/schemas/ChatMessageDO"
+    ResultListMediaDO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MediaDO"
+    ResultListDanmakuVO:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DanmakuVO"
+    ResultMapObject:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          type: object
+          additionalProperties: true
+    ResultListMapObject:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    PageUserVO:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserVO"
+        total: { type: integer, format: int64 }
+        size: { type: integer }
+        current: { type: integer }
+        pages: { type: integer }
+    PagePostVO:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/PostVO"
+        total: { type: integer, format: int64 }
+        size: { type: integer }
+        current: { type: integer }
+        pages: { type: integer }
+    PagePostDO:
+      type: object
+      properties:
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/PostDO"
+        total: { type: integer, format: int64 }
+        size: { type: integer }
+        current: { type: integer }
+        pages: { type: integer }
+    PagePostDoc:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/PostDoc"
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+        size: { type: integer }
+        number: { type: integer }
+
+    RegisterRequest:
+      type: object
+      required: [username, password, nickname]
+      properties:
+        username: { type: string }
+        password: { type: string }
+        nickname: { type: string }
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+    UpdateProfileRequest:
+      type: object
+      required: [nickname]
+      properties:
+        nickname: { type: string }
+        avatar: { type: string, nullable: true }
+        signature: { type: string, nullable: true }
+    UpdatePasswordRequest:
+      type: object
+      required: [oldPassword, newPassword]
+      properties:
+        oldPassword: { type: string }
+        newPassword: { type: string }
+    CreatePostDTO:
+      type: object
+      required: [title, content, sectionId]
+      properties:
+        title: { type: string }
+        content: { type: string }
+        sectionId: { type: integer, format: int64 }
+        tags:
+          type: array
+          items: { type: string }
+        imageUrls:
+          type: array
+          items: { type: string }
+        videoUrl: { type: string, nullable: true }
+        videoCoverUrl: { type: string, nullable: true }
+        videoDuration: { type: integer, nullable: true }
+    CommentRequest:
+      type: object
+      required: [postId, content]
+      properties:
+        postId: { type: integer, format: int64 }
+        content: { type: string }
+    DanmakuRequest:
+      type: object
+      required: [videoId, content, timeOffsetMs]
+      properties:
+        videoId: { type: integer, format: int64 }
+        content: { type: string }
+        timeOffsetMs: { type: integer, format: int64 }
+        color: { type: string, nullable: true }
+    CheckRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string }
+    SendMessageRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string }
+    JsonRpcRequest:
+      type: object
+      properties:
+        jsonrpc: { type: string }
+        method: { type: string }
+        params:
+          type: object
+          additionalProperties: true
+        id: { type: string }
+    JsonRpcResponse:
+      type: object
+      properties:
+        jsonrpc: { type: string }
+        result:
+          type: object
+          additionalProperties: true
+        error:
+          type: object
+          additionalProperties: true
+        id: { type: string }
+
+    LoginVO:
+      type: object
+      properties:
+        token: { type: string }
+        expireIn: { type: integer, format: int64 }
+        userId: { type: integer, format: int64 }
+        nickname: { type: string }
+        avatar: { type: string }
+    UserVO:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        username: { type: string }
+        nickname: { type: string }
+        avatar: { type: string }
+        signature: { type: string }
+        role: { type: string }
+        status: { type: integer }
+        followerCount: { type: integer }
+        followingCount: { type: integer }
+        totalLikedCount: { type: integer }
+        postCount: { type: integer }
+        createTime: { type: string, format: date-time }
+    UserPublicDTO:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        nickname: { type: string }
+        avatar: { type: string }
+        signature: { type: string }
+        role: { type: string }
+        followerCount: { type: integer }
+        followingCount: { type: integer }
+        totalLikedCount: { type: integer }
+        postCount: { type: integer }
+        isFollowing: { type: boolean }
+    UnreadCountVO:
+      type: object
+      properties:
+        chat: { type: integer }
+        interaction: { type: integer }
+        system: { type: integer }
+    PostVO:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        authorId: { type: integer, format: int64 }
+        authorName: { type: string }
+        authorAvatar: { type: string }
+        title: { type: string }
+        content: { type: string }
+        sectionId: { type: integer, format: int64 }
+        status: { type: integer }
+        likeCount: { type: integer }
+        commentCount: { type: integer }
+        favoriteCount: { type: integer }
+        viewCount: { type: integer }
+        createTime: { type: string, format: date-time }
+        updateTime: { type: string, format: date-time }
+        imageUrls:
+          type: array
+          items: { type: string }
+        videoUrl: { type: string, nullable: true }
+        videoCoverUrl: { type: string, nullable: true }
+        videoDuration: { type: integer, nullable: true }
+        tags:
+          type: array
+          items: { type: string }
+        hasLiked: { type: boolean }
+        hasFavorited: { type: boolean }
+        isFollowing: { type: boolean }
+    PostDO:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        authorId: { type: integer, format: int64 }
+        authorName: { type: string }
+        title: { type: string }
+        content: { type: string }
+        sectionId: { type: integer, format: int64 }
+        status: { type: integer }
+        likeCount: { type: integer }
+        commentCount: { type: integer }
+        favoriteCount: { type: integer }
+        viewCount: { type: integer }
+        createTime: { type: string, format: date-time }
+        updateTime: { type: string, format: date-time }
+        imageUrls: { type: string }
+        videoUrl: { type: string, nullable: true }
+        videoCoverUrl: { type: string, nullable: true }
+        videoDuration: { type: integer, nullable: true }
+        tags: { type: string }
+    PostDoc:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        content: { type: string }
+        authorName: { type: string }
+        authorId: { type: integer, format: int64 }
+        imageUrls: { type: string }
+        sectionId: { type: integer, format: int64 }
+        status: { type: integer }
+        likeCount: { type: integer }
+        commentCount: { type: integer }
+        favoriteCount: { type: integer }
+        viewCount: { type: integer }
+        createTime: { type: integer, format: int64 }
+    CommentVO:
+      allOf:
+        - $ref: "#/components/schemas/CommentDO"
+        - type: object
+          properties:
+            nickname: { type: string }
+            avatar: { type: string }
+    CommentDO:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        postId: { type: integer, format: int64 }
+        userId: { type: integer, format: int64 }
+        content: { type: string }
+        parentId: { type: integer, format: int64, nullable: true }
+        createTime: { type: string, format: date-time }
+    ChatRoomVO:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        type: { type: string }
+        lastMessage: { type: string }
+        lastMessageTime: { type: string, format: date-time }
+        unreadCount: { type: integer }
+        recipientNickname: { type: string }
+        recipientAvatar: { type: string }
+    ChatMessageDO:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        roomId: { type: integer, format: int64 }
+        senderId: { type: integer, format: int64 }
+        content: { type: string }
+        type: { type: string }
+        status: { type: integer }
+        createTime: { type: string, format: date-time }
+    MediaDO:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        fileName: { type: string }
+        fileKey: { type: string }
+        fileType: { type: string }
+        url: { type: string }
+        authorId: { type: integer, format: int64 }
+        status: { type: integer }
+        createTime: { type: string, format: date-time }
+    DanmakuVO:
+      type: object
+      properties:
+        videoId: { type: integer, format: int64 }
+        userId: { type: integer, format: int64 }
+        content: { type: string }
+        timeOffsetMs: { type: integer, format: int64 }
+        color: { type: string }
+    SectionDO:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        displayNameZh: { type: string }
+        displayNameEn: { type: string }
+        status: { type: integer }
+    TagDO:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        hit_count: { type: integer, format: int64 }
