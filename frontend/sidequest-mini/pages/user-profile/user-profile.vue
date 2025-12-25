@@ -19,8 +19,8 @@
           <text class="nickname">{{ user.nickname }}</text>
           <text v-if="user.signature" class="signature">{{ user.signature }}</text>
           <view class="stats">
-            <view class="stat-item"><text class="v">{{ user.followingCount }}</text><text class="l">关注</text></view>
-            <view class="stat-item"><text class="v">{{ user.followerCount }}</text><text class="l">粉丝</text></view>
+            <view class="stat-item" @click="goToFollowList('following')"><text class="v">{{ user.followingCount }}</text><text class="l">关注</text></view>
+            <view class="stat-item" @click="goToFollowList('followers')"><text class="v">{{ user.followerCount }}</text><text class="l">粉丝</text></view>
             <view class="stat-item"><text class="v">{{ user.totalLikedCount }}</text><text class="l">获赞</text></view>
           </view>
         </view>
@@ -99,6 +99,9 @@ const toggleFollow = async () => {
     user.value.followerCount += user.value.isFollowing ? 1 : -1
     uni.showToast({ title: user.value.isFollowing ? '已关注' : '已取消关注', icon: 'none' })
   } catch (err) {}
+}
+const goToFollowList = (type) => {
+  uni.navigateTo({ url: `/pages/user-profile/follow-list?userId=${user.value.id}&type=${type}` })
 }
 const goToChat = () => {
   // 这里暂时跳转到私信列表，或者如果后端支持创建房间，则跳转到具体房间

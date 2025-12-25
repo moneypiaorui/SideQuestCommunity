@@ -47,6 +47,10 @@
     {
       "path": "pages/message/follows",
       "style": { "navigationStyle": "custom" }
+    },
+    {
+      "path": "pages/user-profile/follow-list",
+      "style": { "navigationStyle": "custom" }
     }
   ],
   "globalStyle": {

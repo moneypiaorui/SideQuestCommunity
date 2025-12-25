@@ -29,7 +29,7 @@
         </view>
         
         <view class="stats-row">
-          <view v-for="s in stats" :key="s.label" class="stat-item">
+          <view v-for="s in stats" :key="s.label" class="stat-item" @click="s.type && goToFollowList(s.type)">
             <text class="stat-value">{{ s.value }}</text>
             <text class="stat-label">{{ s.label }}</text>
           </view>
@@ -91,10 +91,15 @@ const user = ref({})
 const posts = ref([])
 
 const stats = computed(() => [
-  { label: '关注', value: user.value.followingCount || 0 },
-  { label: '粉丝', value: user.value.followerCount || 0 },
+  { label: '关注', value: user.value.followingCount || 0, type: 'following' },
+  { label: '粉丝', value: user.value.followerCount || 0, type: 'followers' },
   { label: '获赞与收藏', value: (user.value.totalLikedCount || 0) + (user.value.totalFavoritedCount || 0) }
 ])
+
+const goToFollowList = (type) => {
+  if (!user.value.id) return
+  uni.navigateTo({ url: `/pages/user-profile/follow-list?userId=${user.value.id}&type=${type}` })
+}
 
 const leftColumnPosts = ref([])
 const rightColumnPosts = ref([])
