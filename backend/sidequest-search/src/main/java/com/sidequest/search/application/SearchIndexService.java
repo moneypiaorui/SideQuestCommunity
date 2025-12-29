@@ -38,7 +38,13 @@ public class SearchIndexService {
             doc.setCommentCount((Integer) postMap.getOrDefault("commentCount", 0));
             doc.setFavoriteCount((Integer) postMap.getOrDefault("favoriteCount", 0));
             doc.setViewCount((Integer) postMap.getOrDefault("viewCount", 0));
-            doc.setTags((String) postMap.get("tags"));
+            Object tagsObj = postMap.get("tags");
+            if (tagsObj instanceof String tagsStr && !tagsStr.isBlank()) {
+                doc.setTags(java.util.Arrays.stream(tagsStr.split(","))
+                        .map(String::trim)
+                        .filter(tag -> !tag.isEmpty())
+                        .toList());
+            }
             
             Object createTime = postMap.get("createTime");
             if (createTime instanceof Long) {

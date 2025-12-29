@@ -3,6 +3,12 @@ info:
   title: SideQuestCommunity API
   version: "1.0.0"
   description: OpenAPI spec generated from backend controllers.
+x-docs:
+  timeline: doc/project-timeline.md
+  requirements: doc/requirements-analysis.md
+  database: doc/database.md
+  topology: doc/microservices-topology.md
+  deployment: deployment-guide.md
 servers:
   - url: /
 tags:

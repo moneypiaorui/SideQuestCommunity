@@ -6,6 +6,7 @@ import com.sidequest.core.infrastructure.CommentDO;
 import com.sidequest.core.infrastructure.FavoriteDO;
 import com.sidequest.core.infrastructure.PostDO;
 import com.sidequest.core.infrastructure.LikeDO;
+import com.sidequest.core.infrastructure.PostTagDO;
 import com.sidequest.core.infrastructure.SectionDO;
 import com.sidequest.core.infrastructure.TagDO;
 import com.sidequest.core.infrastructure.feign.IdentityClient;
@@ -25,6 +26,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.stream.Collectors;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -42,6 +47,7 @@ public class PostService {
     private final FavoriteMapper favoriteMapper;
     private final SectionMapper sectionMapper;
     private final TagMapper tagMapper;
+    private final PostTagMapper postTagMapper;
     private final PostDomainService postDomainService;
     private final IdentityClient identityClient;
     private final KafkaTemplate<String, String> kafkaTemplate;
@@ -54,7 +60,20 @@ public class PostService {
             queryWrapper.eq(PostDO::getSectionId, sectionId);
         }
         if (tag != null && !tag.isBlank()) {
-            queryWrapper.like(PostDO::getTags, tag);
+            TagDO tagDO = tagMapper.selectOne(new LambdaQueryWrapper<TagDO>().eq(TagDO::getName, tag));
+            if (tagDO == null) {
+                return new Page<>(current, size);
+            }
+            List<Long> postIds = postTagMapper.selectList(new LambdaQueryWrapper<PostTagDO>()
+                    .eq(PostTagDO::getTagId, tagDO.getId()))
+                    .stream()
+                    .map(PostTagDO::getPostId)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (postIds.isEmpty()) {
+                return new Page<>(current, size);
+            }
+            queryWrapper.in(PostDO::getId, postIds);
         }
         queryWrapper.eq(PostDO::getStatus, PostDO.STATUS_NORMAL); 
         queryWrapper.orderByDesc(PostDO::getCreateTime);
@@ -65,7 +84,7 @@ public class PostService {
     public Page<PostVO> getFollowingPostList(int current, int size, String currentUserId) {
         if (currentUserId == null) return new Page<>(current, size);
         
-        // 1. 获取关注的用户列表
+        // 1. 鑾峰彇鍏虫敞鐨勭敤鎴峰垪琛?
         Result<List<Long>> followingRes = identityClient.getFollowingIds();
         if (followingRes.getCode() != 200 || followingRes.getData() == null || followingRes.getData().isEmpty()) {
             return new Page<>(current, size);
@@ -73,7 +92,7 @@ public class PostService {
         
         List<Long> followingIds = followingRes.getData();
         
-        // 2. 查询这些用户的帖子
+        // 2. 鏌ヨ杩欎簺鐢ㄦ埛鐨勫笘瀛?
         Page<PostDO> page = new Page<>(current, size);
         LambdaQueryWrapper<PostDO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.in(PostDO::getAuthorId, followingIds);
@@ -85,8 +104,10 @@ public class PostService {
 
     private Page<PostVO> getPostVOPage(int current, int size, String currentUserId, LambdaQueryWrapper<PostDO> queryWrapper) {
         Page<PostDO> postPage = postMapper.selectPage(new Page<>(current, size), queryWrapper);
+        List<Long> postIds = postPage.getRecords().stream().map(PostDO::getId).collect(Collectors.toList());
+        Map<Long, List<String>> tagsByPostId = getTagsByPostIds(postIds);
         
-        // 提取所有作者 ID 进行批量查询 (模拟，实际可增加批量接口)
+        // 鎻愬彇鎵€鏈変綔鑰?ID 杩涜鎵归噺鏌ヨ (妯℃嫙锛屽疄闄呭彲澧炲姞鎵归噺鎺ュ彛)
         Set<Long> authorIds = postPage.getRecords().stream().map(PostDO::getAuthorId).collect(Collectors.toSet());
         Map<Long, IdentityClient.UserDTO> userMap = authorIds.stream().collect(Collectors.toMap(
                 id -> id,
@@ -101,7 +122,7 @@ public class PostService {
                 (u1, u2) -> u1
         ));
 
-        // 获取当前用户的关注列表
+        // 鑾峰彇褰撳墠鐢ㄦ埛鐨勫叧娉ㄥ垪琛?
         Set<Long> followingIds = new java.util.HashSet<>();
         if (currentUserId != null && !currentUserId.isBlank() && !"null".equals(currentUserId)) {
             try {
@@ -114,11 +135,11 @@ public class PostService {
 
         Page<PostVO> voPage = new Page<>(current, size, postPage.getTotal());
         List<PostVO> voList = postPage.getRecords().stream().map(doItem -> {
-            PostVO vo = convertToVO(doItem, currentUserId);
+            PostVO vo = convertToVO(doItem, currentUserId, tagsByPostId.get(doItem.getId()));
             IdentityClient.UserDTO user = userMap.get(doItem.getAuthorId());
             if (user != null) {
                 vo.setAuthorAvatar(user.getAvatar());
-                // 如果 PostDO 里的 authorName 为空或想用最新的，可以在这里覆盖
+                // 濡傛灉 PostDO 閲岀殑 authorName 涓虹┖鎴栨兂鐢ㄦ渶鏂扮殑锛屽彲浠ュ湪杩欓噷瑕嗙洊
                 if (user.getNickname() != null) {
                     vo.setAuthorName(user.getNickname());
                 }
@@ -134,10 +155,13 @@ public class PostService {
     public void syncAllPostsToSearch() {
         List<PostDO> allPosts = postMapper.selectList(new LambdaQueryWrapper<PostDO>()
                 .eq(PostDO::getStatus, PostDO.STATUS_NORMAL));
+        Map<Long, List<String>> tagsByPostId = getTagsByPostIds(
+                allPosts.stream().map(PostDO::getId).collect(Collectors.toList())
+        );
         
         for (PostDO postDO : allPosts) {
             try {
-                String postJson = objectMapper.writeValueAsString(postDO);
+                String postJson = objectMapper.writeValueAsString(buildPostEvent(postDO, tagsByPostId.get(postDO.getId())));
                 kafkaTemplate.send("post-topic", postDO.getId().toString(), postJson);
             } catch (Exception e) {
                 log.error("Failed to resync post {}", postDO.getId(), e);
@@ -145,16 +169,16 @@ public class PostService {
         }
     }
 
-    private PostVO convertToVO(PostDO doItem, String currentUserId) {
+    private PostVO convertToVO(PostDO doItem, String currentUserId, List<String> tags) {
         PostVO vo = new PostVO();
         BeanUtils.copyProperties(doItem, vo);
         
-        // 处理图片和标签的转换
+        // 澶勭悊鍥剧墖鍜屾爣绛剧殑杞崲
         if (doItem.getImageUrls() != null && !doItem.getImageUrls().isEmpty()) {
             vo.setImageUrls(List.of(doItem.getImageUrls().split(",")));
         }
-        if (doItem.getTags() != null && !doItem.getTags().isEmpty()) {
-            vo.setTags(List.of(doItem.getTags().split(",")));
+        if (tags != null && !tags.isEmpty()) {
+            vo.setTags(tags);
         }
 
         if (currentUserId != null && !currentUserId.isBlank() && !"null".equals(currentUserId)) {
@@ -170,15 +194,11 @@ public class PostService {
     }
 
     public List<TagDO> getPopularTags() {
-        // 暂时 Mock 热门标签数据
-        String[] mockNames = {"游戏", "二次元", "日常", "硬核", "攻略", "同人", "音乐", "技术"};
-        return java.util.stream.IntStream.range(0, mockNames.length).mapToObj(i -> {
-            TagDO tag = new TagDO();
-            tag.setId((long) (i + 1));
-            tag.setName(mockNames[i]);
-            return tag;
-        }).collect(Collectors.toList());
-        // return tagMapper.selectList(new LambdaQueryWrapper<TagDO>().orderByDesc(TagDO::getHitCount).last("LIMIT 20"));
+        return tagMapper.selectList(
+                new LambdaQueryWrapper<TagDO>()
+                        .orderByDesc(TagDO::getHitCount)
+                        .last("LIMIT 20")
+        );
     }
 
     public PostVO getPostDetail(Long id, String currentUserId) {
@@ -186,13 +206,14 @@ public class PostService {
         if (post == null || post.getStatus() == PostDO.STATUS_DELETED) {
             return null;
         }
-        // 增加阅读数
+        // 澧炲姞闃呰鏁?
         postMapper.update(null, new LambdaUpdateWrapper<PostDO>()
                 .eq(PostDO::getId, id)
                 .setSql("view_count = view_count + 1"));
         post.setViewCount(post.getViewCount() + 1);
         
-        PostVO vo = convertToVO(post, currentUserId);
+        List<String> tags = getTagsByPostIds(List.of(id)).getOrDefault(id, List.of());
+        PostVO vo = convertToVO(post, currentUserId, tags);
         try {
             Result<IdentityClient.UserPublicDTO> userRes = identityClient.getUserPublicProfile(post.getAuthorId());
             if (userRes.getCode() == 200 && userRes.getData() != null) {
@@ -213,9 +234,9 @@ public class PostService {
         
         if (comments.isEmpty()) return List.of();
         
-        // 聚合用户信息
+        // 鑱氬悎鐢ㄦ埛淇℃伅
         Set<Long> userIds = comments.stream().map(CommentDO::getUserId).collect(Collectors.toSet());
-        // 模拟批量获取用户信息，实际中 IdentityClient 应支持批量接口
+        // 妯℃嫙鎵归噺鑾峰彇鐢ㄦ埛淇℃伅锛屽疄闄呬腑 IdentityClient 搴旀敮鎸佹壒閲忔帴鍙?
         Map<Long, IdentityClient.UserDTO> userMap = userIds.stream().collect(Collectors.toMap(
                 id -> id,
                 id -> {
@@ -252,7 +273,7 @@ public class PostService {
         LambdaQueryWrapper<PostDO> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.in(PostDO::getId, postIds);
         queryWrapper.eq(PostDO::getStatus, PostDO.STATUS_NORMAL);
-        // PostgreSQL 不支持 FIELD 函数，使用 CASE WHEN 保持顺序
+        // PostgreSQL 涓嶆敮鎸?FIELD 鍑芥暟锛屼娇鐢?CASE WHEN 淇濇寔椤哄簭
         StringBuilder orderBy = new StringBuilder("CASE id ");
         for (int i = 0; i < postIds.size(); i++) {
             orderBy.append("WHEN ").append(postIds.get(i)).append(" THEN ").append(i).append(" ");
@@ -276,7 +297,7 @@ public class PostService {
         queryWrapper.in(PostDO::getId, postIds);
         queryWrapper.eq(PostDO::getStatus, PostDO.STATUS_NORMAL);
         
-        // PostgreSQL 不支持 FIELD 函数，使用 CASE WHEN 保持顺序
+        // PostgreSQL 涓嶆敮鎸?FIELD 鍑芥暟锛屼娇鐢?CASE WHEN 淇濇寔椤哄簭
         StringBuilder orderBy = new StringBuilder("CASE id ");
         for (int i = 0; i < postIds.size(); i++) {
             orderBy.append("WHEN ").append(postIds.get(i)).append(" THEN ").append(i).append(" ");
@@ -299,7 +320,7 @@ public class PostService {
         if (post != null) {
             post.setStatus(PostDO.STATUS_DELETED);
             postMapper.updateById(post);
-            // 发送 Kafka 消息通知搜索服务删除索引
+            // 鍙戦€?Kafka 娑堟伅閫氱煡鎼滅储鏈嶅姟鍒犻櫎绱㈠紩
             kafkaTemplate.send("post-delete-topic", id.toString(), "Delete post " + id);
         }
     }
@@ -326,9 +347,9 @@ public class PostService {
         
         if (pass) {
             post.setStatus(PostDO.STATUS_NORMAL);
-            // 审核通过，同步到搜索服务
+            // 瀹℃牳閫氳繃锛屽悓姝ュ埌鎼滅储鏈嶅姟
             try {
-                String postJson = objectMapper.writeValueAsString(post);
+                String postJson = objectMapper.writeValueAsString(buildPostEvent(post, null));
                 kafkaTemplate.send("post-topic", post.getId().toString(), postJson);
             } catch (Exception e) {
                 log.error("Failed to send post creation event after audit", e);
@@ -342,7 +363,7 @@ public class PostService {
 
     @Transactional
     public Long handleCreatePost(String userId, CreatePostDTO dto) {
-        // 0. 校验分区是否存在
+        // 0. 鏍￠獙鍒嗗尯鏄惁瀛樺湪
         if (dto.getSectionId() != null) {
             SectionDO section = sectionMapper.selectById(dto.getSectionId());
             if (section == null || section.getStatus() != 0) {
@@ -350,12 +371,12 @@ public class PostService {
             }
         }
 
-        // 1. 调用领域服务进行内容校验
+        // 1. 璋冪敤棰嗗煙鏈嶅姟杩涜鍐呭鏍￠獙
         if (!postDomainService.validateContent(dto.getContent())) {
             throw new RuntimeException("Content violates community rules");
         }
 
-        // 3. 构造领域对象并调用其业务方法
+        // 3. 鏋勯€犻鍩熷璞″苟璋冪敤鍏朵笟鍔℃柟娉?
         Post post = Post.builder()
                 .authorId(Long.parseLong(userId))
                 .title(dto.getTitle())
@@ -371,7 +392,7 @@ public class PostService {
         
         post.publish(); 
 
-        // 4. 持久化
+        // 4. 鎸佷箙鍖?
         PostDO postDO = new PostDO();
         postDO.setAuthorId(post.getAuthorId());
         postDO.setTitle(post.getTitle());
@@ -385,9 +406,6 @@ public class PostService {
         postDO.setCreateTime(post.getCreateTime());
         postDO.setUpdateTime(LocalDateTime.now());
         
-        if (post.getTags() != null) {
-            postDO.setTags(String.join(",", post.getTags()));
-        }
         postDO.setVideoUrl(post.getVideoUrl());
         postDO.setVideoCoverUrl(post.getVideoCoverUrl());
         postDO.setVideoDuration(post.getVideoDuration());
@@ -397,10 +415,11 @@ public class PostService {
         }
         
         postMapper.insert(postDO);
+        savePostTags(postDO.getId(), dto.getTags());
 
-        // 5. 发送异步事件
+        // 5. 鍙戦€佸紓姝ヤ簨浠?
         try {
-            String postJson = objectMapper.writeValueAsString(postDO);
+            String postJson = objectMapper.writeValueAsString(buildPostEvent(postDO, normalizeTagNames(dto.getTags())));
             kafkaTemplate.send("post-topic", postDO.getId().toString(), postJson);
         } catch (Exception e) {
             log.error("Failed to send post creation event", e);
@@ -424,7 +443,7 @@ public class PostService {
         commentDO.setCreateTime(LocalDateTime.now());
         commentMapper.insert(commentDO);
         
-        // 更新帖子评论数
+        // 鏇存柊甯栧瓙璇勮鏁?
         postMapper.update(null, new LambdaUpdateWrapper<PostDO>()
                 .eq(PostDO::getId, postId)
                 .setSql("comment_count = comment_count + 1"));
@@ -452,13 +471,13 @@ public class PostService {
                 .eq(LikeDO::getUserId, uid);
         
         if (likeMapper.selectCount(query) > 0) {
-            // 取消点赞
+            // 鍙栨秷鐐硅禐
             likeMapper.delete(query);
             postMapper.update(null, new LambdaUpdateWrapper<PostDO>()
                     .eq(PostDO::getId, postId)
                     .setSql("like_count = like_count - 1"));
         } else {
-            // 点赞
+            // 鐐硅禐
             LikeDO likeDO = new LikeDO();
             likeDO.setPostId(postId);
             likeDO.setUserId(uid);
@@ -522,4 +541,83 @@ public class PostService {
             }
         }
     }
+
+    private List<String> normalizeTagNames(List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return List.of();
+        }
+        return tags.stream()
+                .filter(name -> name != null && !name.isBlank())
+                .map(String::trim)
+                .filter(name -> !name.isEmpty())
+                .collect(Collectors.toCollection(LinkedHashSet::new))
+                .stream()
+                .collect(Collectors.toList());
+    }
+
+    private void savePostTags(Long postId, List<String> tagNames) {
+        List<String> normalized = normalizeTagNames(tagNames);
+        if (normalized.isEmpty()) {
+            return;
+        }
+
+        for (String name : normalized) {
+            TagDO tag = tagMapper.selectOne(new LambdaQueryWrapper<TagDO>().eq(TagDO::getName, name));
+            if (tag == null) {
+                tag = new TagDO();
+                tag.setName(name);
+                tag.setHitCount(0L);
+                tagMapper.insert(tag);
+            }
+
+            PostTagDO link = new PostTagDO();
+            link.setPostId(postId);
+            link.setTagId(tag.getId());
+            link.setCreateTime(LocalDateTime.now());
+            postTagMapper.insert(link);
+
+            tagMapper.update(null, new LambdaUpdateWrapper<TagDO>()
+                    .eq(TagDO::getId, tag.getId())
+                    .setSql("hit_count = hit_count + 1"));
+        }
+    }
+
+    private Map<Long, List<String>> getTagsByPostIds(List<Long> postIds) {
+        if (postIds == null || postIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<PostTagDO> links = postTagMapper.selectList(
+                new LambdaQueryWrapper<PostTagDO>().in(PostTagDO::getPostId, postIds)
+        );
+        if (links.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Set<Long> tagIds = links.stream().map(PostTagDO::getTagId).collect(Collectors.toSet());
+        List<TagDO> tags = tagMapper.selectList(new LambdaQueryWrapper<TagDO>().in(TagDO::getId, tagIds));
+        Map<Long, String> tagNameById = tags.stream().collect(Collectors.toMap(TagDO::getId, TagDO::getName));
+
+        Map<Long, List<String>> result = new HashMap<>();
+        for (PostTagDO link : links) {
+            String tagName = tagNameById.get(link.getTagId());
+            if (tagName == null) {
+                continue;
+            }
+            result.computeIfAbsent(link.getPostId(), k -> new ArrayList<>()).add(tagName);
+        }
+        return result;
+    }
+
+    private Map<String, Object> buildPostEvent(PostDO post, List<String> tagNames) {
+        Map<String, Object> postMap = objectMapper.convertValue(post, Map.class);
+        List<String> tags = tagNames;
+        if (tags == null) {
+            tags = getTagsByPostIds(List.of(post.getId())).getOrDefault(post.getId(), List.of());
+        }
+        postMap.put("tags", String.join(",", tags));
+        return postMap;
+    }
 }
+
+

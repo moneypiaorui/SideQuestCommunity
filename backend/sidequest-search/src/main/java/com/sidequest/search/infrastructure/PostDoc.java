@@ -51,7 +51,7 @@ public class PostDoc {
     @Field(type = FieldType.Long)
     private Long createTime;
 
-    @Field(type = FieldType.Text, analyzer = "standard")
-    private String tags;
+    @Field(type = FieldType.Keyword)
+    private java.util.List<String> tags;
 }
 

@@ -41,7 +41,6 @@ CREATE TABLE IF NOT EXISTS t_post (
     video_cover_url VARCHAR(255),
     video_duration INT DEFAULT 0,
     media_id BIGINT,
-    tags VARCHAR(255),
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -84,6 +83,17 @@ CREATE TABLE IF NOT EXISTS t_tag (
     name VARCHAR(64) UNIQUE NOT NULL,
     hit_count BIGINT DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS t_post_tag (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT NOT NULL,
+    tag_id BIGINT NOT NULL,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(post_id, tag_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_tag_post_id ON t_post_tag(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_tag_tag_id ON t_post_tag(tag_id);
 
 CREATE TABLE IF NOT EXISTS t_media (
     id BIGSERIAL PRIMARY KEY,
@@ -149,10 +159,10 @@ VALUES
     ('food', '美食', 'Food', 0)
 ON CONFLICT (name) DO NOTHING;
 
--- INSERT INTO t_post (author_id, title, content, section_id, status, like_count, comment_count, favorite_count, view_count, image_urls, video_url, video_cover_url, video_duration, media_id, tags)
+-- INSERT INTO t_post (author_id, title, content, section_id, status, like_count, comment_count, favorite_count, view_count, image_urls, video_url, video_cover_url, video_duration, media_id)
 -- VALUES
---     (2, 'Alice', 'First Post', 'Hello SideQuest!', 1, 0, 5, 1, 2, 20, '', '', '', 0, NULL, 'intro,hello'),
---     (3, 'Bob', 'Food Notes', 'Great food nearby.', 3, 0, 2, 0, 1, 10, '', '', '', 0, NULL, 'food,local');
+--     (2, 'Alice', 'First Post', 'Hello SideQuest!', 1, 0, 5, 1, 2, 20, '', '', '', 0, NULL),
+--     (3, 'Bob', 'Food Notes', 'Great food nearby.', 3, 0, 2, 0, 1, 10, '', '', '', 0, NULL);
 
 -- INSERT INTO t_comment (post_id, user_id, content, parent_id)
 -- VALUES

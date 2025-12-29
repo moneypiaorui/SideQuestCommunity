@@ -15,8 +15,7 @@ CREATE TABLE IF NOT EXISTS t_post (
     video_url VARCHAR(255),
     video_cover_url VARCHAR(255),
     video_duration INT DEFAULT 0,
-    media_id BIGINT,
-    tags VARCHAR(255)
+    media_id BIGINT
 );
 
 CREATE TABLE IF NOT EXISTS t_comment (
@@ -57,4 +56,15 @@ CREATE TABLE IF NOT EXISTS t_tag (
     name VARCHAR(64) UNIQUE NOT NULL,
     hit_count BIGINT DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS t_post_tag (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT NOT NULL,
+    tag_id BIGINT NOT NULL,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(post_id, tag_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_post_tag_post_id ON t_post_tag(post_id);
+CREATE INDEX IF NOT EXISTS idx_post_tag_tag_id ON t_post_tag(tag_id);
 
