@@ -66,12 +66,12 @@ public class PostController {
     }
 
     @PostMapping("/posts")
-    public Result<String> createPost(@Valid @RequestBody CreatePostDTO dto) {
+    public Result<Long> createPost(@Valid @RequestBody CreatePostDTO dto) {
         String userId = UserContext.getUserId();
         if (userId == null) return Result.error(401, "Unauthorized");
         
-        postService.handleCreatePost(userId, dto);
-        return Result.success("Post created successfully");
+        Long postId = postService.handleCreatePost(userId, dto);
+        return Result.success(postId);
     }
 
     @PostMapping("/admin/posts/sync")

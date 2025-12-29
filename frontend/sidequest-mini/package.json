@@ -6,7 +6,7 @@
     "dev:h5": "cross-env UNI_INPUT_DIR=. uni",
     "build:h5": "cross-env UNI_INPUT_DIR=. uni build",
     "dev:mp-weixin": "cross-env UNI_INPUT_DIR=. uni -p mp-weixin",
-    "build:mp-weixin": "cross-env UNI_INPUT_DIR=. VITE_API_BASE_URL=https://sns.szucraft.cn uni build -p mp-weixin"
+    "build:mp-weixin": "cross-env UNI_INPUT_DIR=. uni build -p mp-weixin"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-4010420240430001",

@@ -387,7 +387,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ResultString"
+                $ref: "#/components/schemas/ResultLong"
   /api/core/posts/following:
     get:
       tags: [core]
@@ -601,9 +601,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/ResultString"
 
-  /api/admin/posts:
+  /api/core/admin/posts:
     get:
-      tags: [admin]
+      tags: [admin, core]
       summary: Admin list posts
       security:
         - bearerAuth: []
@@ -630,9 +630,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ResultPagePostDO"
-  /api/admin/posts/{id}/audit:
+  /api/core/admin/posts/{id}/audit:
     post:
-      tags: [admin]
+      tags: [admin, core]
       summary: Audit post
       security:
         - bearerAuth: []
@@ -655,9 +655,9 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ResultString"
-  /api/admin/posts/{id}:
+  /api/core/admin/posts/{id}:
     delete:
-      tags: [admin]
+      tags: [admin, core]
       summary: Delete post
       security:
         - bearerAuth: []
@@ -1040,6 +1040,12 @@ components:
         code: { type: integer }
         message: { type: string }
         data: { type: integer, nullable: true }
+    ResultLong:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data: { type: integer, format: int64, nullable: true }
     ResultBoolean:
       type: object
       properties:

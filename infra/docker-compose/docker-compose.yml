@@ -1,3 +1,4 @@
+name: sidequest
 services:
   # 核心关系型数据库
   postgres:
@@ -97,20 +98,60 @@ services:
 
   # --- 前端与网关代理 ---
   nginx:
-    image: nginx
-    build:
-      context: ../../frontend/sidequest-mini
-      dockerfile: Dockerfile
+    image: nginx:alpine
     container_name: sidequest-nginx
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ../nginx/sidequest-mini.conf:/etc/nginx/conf.d/default.conf
+      - ./nginx/sidequest-mini.conf:/etc/nginx/conf.d/default.conf
       - ./nginx/ssl:/etc/nginx/ssl # 挂载 SSL 证书目录
-      # - ./nginx/html:/usr/share/nginx/html
+      - ./nginx/html:/usr/share/nginx/html
     depends_on:
       - gateway-service
+    networks:
+      - default
+
+
+  # manage-frontend:
+  #   build:
+  #     context: ../../frontend/side-quest-manage
+  #     dockerfile: Dockerfile
+  #   image: sidequest/manage-frontend
+  #   container_name: sidequest-manage-frontend
+  #   ports:
+  #     - "3001:3000"
+  #   networks:
+  #     - default
+
+  # One-shot service to build static export and copy into nginx html folder
+  # Usage: docker compose run --rm manage-export
+  manage-export:
+    build:
+      context: ../../frontend/side-quest-manage
+      target: build
+    image: sidequest/manage-frontend-export
+    container_name: sidequest-manage-export
+    volumes:
+      - ./nginx/html/admin:/dest
+    command: >
+      sh -c "mkdir -p /dest && rm -rf /dest/* /dest/.[!.]* /dest/..?* 2>/dev/null || true;
+      cp -a /app/out/. /dest/;
+      chmod -R u+rwX /dest"
+    networks:
+      - default
+  sidequest-mini-export:
+    build:
+      context: ../../frontend/sidequest-mini
+      target: build
+    image: sidequest/sidequest-mini-export
+    container_name: sidequest-mini-export
+    volumes:
+      - ./nginx/html/sidequest-mini:/dest
+    command: >
+      sh -c "mkdir -p /dest && rm -rf /dest/* /dest/.[!.]* /dest/..?* 2>/dev/null || true;
+      cp -a /app/dist/build/h5/. /dest/;
+      chmod -R u+rwX /dest"
     networks:
       - default
 
@@ -195,7 +236,7 @@ services:
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
       - MINIO_ENDPOINT=http://minio:9000
-      - MINIO_PUBLICENDPOINT=https://sns.szucraft.cn/minio
+      - MINIO_PUBLICENDPOINT=${MINIO_PUBLICENDPOINT:-http://localhost/minio}
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       postgres:
@@ -310,6 +351,19 @@ services:
         condition: service_started
       nacos:
         condition: service_healthy
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: sidequest-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: sidequest@example.com
+      PGADMIN_DEFAULT_PASSWORD: sidequest
+    ports:
+      - "5005:80"   # 只绑定到本机，避免公网暴露
+    # volumes:
+    #   - ./pgadmin:/var/lib/pgadmin
+    depends_on:
+      - postgres
 
 networks:
   default:

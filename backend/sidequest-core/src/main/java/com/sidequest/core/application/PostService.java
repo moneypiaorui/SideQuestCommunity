@@ -341,7 +341,7 @@ public class PostService {
     }
 
     @Transactional
-    public void handleCreatePost(String userId, CreatePostDTO dto) {
+    public Long handleCreatePost(String userId, CreatePostDTO dto) {
         // 0. 校验分区是否存在
         if (dto.getSectionId() != null) {
             SectionDO section = sectionMapper.selectById(dto.getSectionId());
@@ -407,6 +407,8 @@ public class PostService {
         }
         
         kafkaTemplate.send("user-events", "post_create", "User " + userId + " created post " + postDO.getId());
+
+        return postDO.getId();
     }
 
     @Transactional

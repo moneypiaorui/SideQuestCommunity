@@ -321,7 +321,7 @@ const submit = async () => {
       form.mediaId = registeredMedia.id // 关联 Media ID
     }
     
-    await request({
+    const postId = await request({
       url: '/api/core/posts',
       method: 'POST',
       data: {
@@ -335,7 +335,11 @@ const submit = async () => {
     
     uni.showToast({ title: '发布成功', icon: 'success' })
     setTimeout(() => {
-      uni.navigateBack()
+      if (postId) {
+        uni.redirectTo({ url: `/pages/post-detail/post-detail?id=${postId}` })
+      } else {
+        uni.navigateBack()
+      }
     }, 1500)
   } catch (err) {
     console.error(err)
