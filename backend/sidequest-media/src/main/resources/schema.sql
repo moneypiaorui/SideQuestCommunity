@@ -19,5 +19,5 @@ CREATE TABLE IF NOT EXISTS t_danmaku (
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_danmaku_video_id ON t_danmaku(video_id);
+CREATE INDEX IF NOT EXISTS idx_danmaku_video_id ON t_danmaku(video_id);
 

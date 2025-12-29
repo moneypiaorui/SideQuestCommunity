@@ -19,7 +19,15 @@ CREATE TABLE IF NOT EXISTS t_post (
     tags VARCHAR(255)
 );
 
--- 移除 t_rating，改为 t_like
+CREATE TABLE IF NOT EXISTS t_comment (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    content TEXT NOT NULL,
+    parent_id BIGINT,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS t_like (
     id BIGSERIAL PRIMARY KEY,
     post_id BIGINT NOT NULL,
@@ -38,7 +46,7 @@ CREATE TABLE IF NOT EXISTS t_favorite (
 
 CREATE TABLE IF NOT EXISTS t_section (
     id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(64) NOT NULL,
+    name VARCHAR(64) UNIQUE NOT NULL,
     display_name_zh VARCHAR(64),
     display_name_en VARCHAR(64),
     status INT DEFAULT 0

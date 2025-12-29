@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS t_user (
     avatar VARCHAR(255),
     signature VARCHAR(255),
     role VARCHAR(20) DEFAULT 'USER',
-    status INT DEFAULT 0, -- 0:正常, 1:封禁
+    status INT DEFAULT 0, -- 0:正常, 1:封禁, 2:删除
     follower_count INT DEFAULT 0,
     following_count INT DEFAULT 0,
     total_liked_count INT DEFAULT 0,
@@ -28,11 +28,10 @@ CREATE TABLE IF NOT EXISTS t_follow (
 CREATE TABLE IF NOT EXISTS t_post (
     id BIGSERIAL PRIMARY KEY,
     author_id BIGINT NOT NULL,
-    author_name VARCHAR(64),
     title VARCHAR(255),
     content TEXT,
     section_id BIGINT,
-    status INT DEFAULT 0, -- 0:发布, 1:草稿, 2:删除
+    status INT DEFAULT 0, -- 0:审核中, 1:正常, 2:封禁, 3:删除
     like_count INT DEFAULT 0,
     comment_count INT DEFAULT 0,
     favorite_count INT DEFAULT 0,
@@ -40,7 +39,7 @@ CREATE TABLE IF NOT EXISTS t_post (
     image_urls TEXT,
     video_url VARCHAR(255),
     video_cover_url VARCHAR(255),
-    video_duration INT,
+    video_duration INT DEFAULT 0,
     media_id BIGINT,
     tags VARCHAR(255),
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -74,10 +73,9 @@ CREATE TABLE IF NOT EXISTS t_favorite (
 
 CREATE TABLE IF NOT EXISTS t_section (
     id BIGSERIAL PRIMARY KEY,
-    name VARCHAR(64) NOT NULL,
+    name VARCHAR(64) UNIQUE NOT NULL,
     display_name_zh VARCHAR(64),
     display_name_en VARCHAR(64),
-    sort_order INT DEFAULT 0,
     status INT DEFAULT 0 -- 0: 正常, 1: 隐藏
 );
 
@@ -102,11 +100,13 @@ CREATE TABLE IF NOT EXISTS t_danmaku (
     id BIGSERIAL PRIMARY KEY,
     video_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
-    content TEXT,
-    time_offset_ms BIGINT,
-    color VARCHAR(16),
+    content TEXT NOT NULL,
+    time_offset_ms BIGINT NOT NULL,
+    color VARCHAR(32),
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_danmaku_video_id ON t_danmaku(video_id);
 
 CREATE TABLE IF NOT EXISTS t_chat_room (
     id BIGSERIAL PRIMARY KEY,
@@ -121,7 +121,6 @@ CREATE TABLE IF NOT EXISTS t_chat_room_member (
     user_id BIGINT NOT NULL,
     last_read_message_id BIGINT DEFAULT 0,
     join_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(room_id, user_id)
 );
 
@@ -136,33 +135,31 @@ CREATE TABLE IF NOT EXISTS t_chat_message (
 );
 
 -- Seed data
-INSERT INTO t_user (id, username, password, nickname, avatar, signature, role, status, follower_count, following_count, total_liked_count, post_count)
+INSERT INTO t_user (username, password, nickname, avatar, signature, role, status, follower_count, following_count, total_liked_count, post_count)
 VALUES
-    (1, 'admin', '$2b$12$qhVSGDjFxzI.bnlbf5gT3e.AcPA.snhkXSBNF7aA/Mmu4Kp3pnZfu', 'Admin', '', '', 'ADMIN', 0, 0, 0, 0, 0),
-    (2, 'alice', '$2b$12$thJJqsEdmcTd31cMdOyugej../Qnk99Gof6Aju40Mz9LrvbRm8Iym', 'Alice', '', '', 'USER', 0, 12, 5, 20, 2),
-    (3, 'bob', '$2b$12$vSTACfyYRQSJz26VH2x2NOautjgGyRfAHHhXYo9zFl2nqo3k9bWyC', 'Bob', '', '', 'USER', 0, 3, 8, 5, 1)
-ON CONFLICT (id) DO NOTHING;
+    ('admin', '$2b$12$qhVSGDjFxzI.bnlbf5gT3e.AcPA.snhkXSBNF7aA/Mmu4Kp3pnZfu', 'Admin', '', '', 'ADMIN', 0, 0, 0, 0, 0),
+    ('alice', '$2b$12$thJJqsEdmcTd31cMdOyugej../Qnk99Gof6Aju40Mz9LrvbRm8Iym', 'Alice', '', '', 'USER', 0, 12, 5, 20, 2),
+    ('bob', '$2b$12$vSTACfyYRQSJz26VH2x2NOautjgGyRfAHHhXYo9zFl2nqo3k9bWyC', 'Bob', '', '', 'USER', 0, 3, 8, 5, 1)
+ON CONFLICT (username) DO NOTHING;
 
-INSERT INTO t_section (id, name, display_name_zh, display_name_en, sort_order, status)
+INSERT INTO t_section (name, display_name_zh, display_name_en, status)
 VALUES
-    (1, 'design', '设计', 'Design', 1, 0),
-    (2, 'ui', 'UI', 'UI', 2, 0),
-    (3, 'food', '美食', 'Food', 3, 0)
-ON CONFLICT (id) DO NOTHING;
+    ('design', '设计', 'Design', 0),
+    ('ui', 'UI', 'UI', 0),
+    ('food', '美食', 'Food', 0)
+ON CONFLICT (name) DO NOTHING;
 
-INSERT INTO t_post (id, author_id, author_name, title, content, section_id, status, like_count, comment_count, favorite_count, view_count, image_urls, video_url, video_cover_url, video_duration, media_id, tags)
-VALUES
-    (1, 2, 'Alice', 'First Post', 'Hello SideQuest!', 1, 0, 5, 1, 2, 20, '', '', '', NULL, NULL, 'intro,hello'),
-    (2, 3, 'Bob', 'Food Notes', 'Great food nearby.', 3, 0, 2, 0, 1, 10, '', '', '', NULL, NULL, 'food,local')
-ON CONFLICT (id) DO NOTHING;
+-- INSERT INTO t_post (author_id, title, content, section_id, status, like_count, comment_count, favorite_count, view_count, image_urls, video_url, video_cover_url, video_duration, media_id, tags)
+-- VALUES
+--     (2, 'Alice', 'First Post', 'Hello SideQuest!', 1, 0, 5, 1, 2, 20, '', '', '', 0, NULL, 'intro,hello'),
+--     (3, 'Bob', 'Food Notes', 'Great food nearby.', 3, 0, 2, 0, 1, 10, '', '', '', 0, NULL, 'food,local');
 
-INSERT INTO t_comment (id, post_id, user_id, content, parent_id)
-VALUES
-    (1, 1, 3, 'Nice post!', NULL)
-ON CONFLICT (id) DO NOTHING;
+-- INSERT INTO t_comment (post_id, user_id, content, parent_id)
+-- VALUES
+--     (1, 3, 'Nice post!', NULL);
 
-INSERT INTO t_follow (id, follower_id, following_id)
-VALUES
-    (1, 2, 3),
-    (2, 3, 2)
-ON CONFLICT (id) DO NOTHING;
+-- INSERT INTO t_follow (follower_id, following_id)
+-- VALUES
+--     (2, 3),
+--     (3, 2)
+-- ON CONFLICT (follower_id, following_id) DO NOTHING;

@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS t_chat_room_member (
     room_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
     last_read_message_id BIGINT DEFAULT 0,
-    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    join_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(room_id, user_id)
 );
 
