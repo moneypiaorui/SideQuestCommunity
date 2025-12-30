@@ -24,6 +24,9 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final FollowMapper followMapper;
+    private final RoleMapper roleMapper;
+    private final UserRoleMapper userRoleMapper;
+    private final PermissionMapper permissionMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
 
@@ -95,6 +98,20 @@ public class UserService {
                 .build();
                 
         userRepository.save(user);
+
+        UserDO savedUser = userMapper.selectByUsername(username);
+        if (savedUser == null) {
+            throw new RuntimeException("Failed to load user after registration");
+        }
+        RoleDO defaultRole = roleMapper.selectByCode("USER");
+        if (defaultRole == null) {
+            throw new RuntimeException("Default role USER not found");
+        }
+        UserRoleDO userRole = new UserRoleDO();
+        userRole.setUserId(savedUser.getId());
+        userRole.setRoleId(defaultRole.getId());
+        userRole.setCreateTime(LocalDateTime.now());
+        userRoleMapper.insert(userRole);
     }
 
     @Transactional
@@ -203,14 +220,39 @@ public class UserService {
             throw new RuntimeException("User account deleted");
         }
         
-        String token = jwtUtils.generateToken(user.getId().toString(), user.getRole());
+        List<String> roles = userRoleMapper.selectRoleCodesByUserId(user.getId());
+        if (roles == null || roles.isEmpty()) {
+            roles = new java.util.ArrayList<>();
+            if (user.getRole() != null) {
+                roles.add(user.getRole());
+            }
+        }
+        List<String> permissions = permissionMapper.selectCodesByUserId(user.getId());
+        if (permissions == null) {
+            permissions = new java.util.ArrayList<>();
+        }
+        String primaryRole = resolvePrimaryRole(roles);
+
+        String token = jwtUtils.generateToken(user.getId().toString(), primaryRole, roles, permissions);
         return LoginVO.builder()
                 .token(token)
                 .expireIn(86400L) // 假设 24 小时
                 .userId(user.getId())
                 .nickname(user.getNickname())
                 .avatar(user.getAvatar())
+                .roles(roles)
+                .permissions(permissions)
                 .build();
+    }
+
+    private String resolvePrimaryRole(List<String> roles) {
+        if (roles != null && roles.contains("ADMIN")) {
+            return "ADMIN";
+        }
+        if (roles != null && !roles.isEmpty()) {
+            return roles.get(0);
+        }
+        return "USER";
     }
 }
 

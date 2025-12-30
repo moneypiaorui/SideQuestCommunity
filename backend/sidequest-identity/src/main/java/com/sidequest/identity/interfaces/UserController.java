@@ -74,7 +74,7 @@ public class UserController {
     }
 
     @GetMapping("/admin/users")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('USER_LIST')")
     public Result<Page<UserVO>> listUsers(
             @RequestParam(defaultValue = "1") @Min(1) int current,
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int size,
@@ -137,7 +137,7 @@ public class UserController {
     }
 
     @PostMapping("/admin/users/{id}/ban")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('USER_BAN')")
     public Result<String> banUser(@PathVariable Long id) {
         userService.banUser(id);
         return Result.success("User banned");

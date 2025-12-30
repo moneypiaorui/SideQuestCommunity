@@ -31,6 +31,10 @@ erDiagram
     t_post ||--o{ t_favorite : "post_id"
     t_user ||--o{ t_follow : "follower_id"
     t_user ||--o{ t_follow : "following_id"
+    t_user ||--o{ t_user_role : "user_id"
+    t_role ||--o{ t_user_role : "role_id"
+    t_role ||--o{ t_role_permission : "role_id"
+    t_permission ||--o{ t_role_permission : "permission_id"
     t_post ||--o{ t_post_tag : "post_id"
     t_tag ||--o{ t_post_tag : "tag_id"
     t_user ||--o{ t_media : "author_id"
@@ -66,6 +70,35 @@ classDiagram
       BIGSERIAL id
       BIGINT follower_id
       BIGINT following_id
+      TIMESTAMP create_time
+    }
+    class t_role {
+      BIGSERIAL id
+      VARCHAR code
+      VARCHAR name
+      VARCHAR description
+      INT status
+      TIMESTAMP create_time
+    }
+    class t_permission {
+      BIGSERIAL id
+      VARCHAR code
+      VARCHAR name
+      VARCHAR description
+      VARCHAR resource
+      VARCHAR action
+      TIMESTAMP create_time
+    }
+    class t_user_role {
+      BIGSERIAL id
+      BIGINT user_id
+      BIGINT role_id
+      TIMESTAMP create_time
+    }
+    class t_role_permission {
+      BIGSERIAL id
+      BIGINT role_id
+      BIGINT permission_id
       TIMESTAMP create_time
     }
     class t_post {
@@ -177,6 +210,10 @@ classDiagram
     t_post "1" --> "N" t_favorite : post_id
     t_user "1" --> "N" t_follow : follower_id
     t_user "1" --> "N" t_follow : following_id
+    t_user "1" --> "N" t_user_role : user_id
+    t_role "1" --> "N" t_user_role : role_id
+    t_role "1" --> "N" t_role_permission : role_id
+    t_permission "1" --> "N" t_role_permission : permission_id
     t_post "1" --> "N" t_post_tag : post_id
     t_tag "1" --> "N" t_post_tag : tag_id
     t_user "1" --> "N" t_media : author_id
@@ -216,9 +253,42 @@ classDiagram
       BIGINT following_id
       TIMESTAMP create_time
     }
+    class t_role {
+      BIGSERIAL id
+      VARCHAR code
+      VARCHAR name
+      VARCHAR description
+      INT status
+      TIMESTAMP create_time
+    }
+    class t_permission {
+      BIGSERIAL id
+      VARCHAR code
+      VARCHAR name
+      VARCHAR description
+      VARCHAR resource
+      VARCHAR action
+      TIMESTAMP create_time
+    }
+    class t_user_role {
+      BIGSERIAL id
+      BIGINT user_id
+      BIGINT role_id
+      TIMESTAMP create_time
+    }
+    class t_role_permission {
+      BIGSERIAL id
+      BIGINT role_id
+      BIGINT permission_id
+      TIMESTAMP create_time
+    }
 
     t_user "1" --> "N" t_follow : follower_id
     t_user "1" --> "N" t_follow : following_id
+    t_user "1" --> "N" t_user_role : user_id
+    t_role "1" --> "N" t_user_role : role_id
+    t_role "1" --> "N" t_role_permission : role_id
+    t_permission "1" --> "N" t_role_permission : permission_id
 ```
 
 Core 模块
@@ -363,7 +433,7 @@ t_user
 - nickname VARCHAR(64)
 - avatar VARCHAR(255)
 - signature VARCHAR(255)
-- role VARCHAR(20) DEFAULT 'USER'
+- role VARCHAR(20) DEFAULT 'USER' (primary role for compatibility)
 - status INT DEFAULT 0 (0: 正常, 1: 封禁, 2: 删除)
 - follower_count INT DEFAULT 0
 - following_count INT DEFAULT 0
@@ -377,6 +447,37 @@ t_follow
 - following_id BIGINT NOT NULL
 - create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 - UNIQUE(follower_id, following_id)
+
+t_role
+- id BIGSERIAL PK
+- code VARCHAR(64) UNIQUE NOT NULL
+- name VARCHAR(64)
+- description VARCHAR(255)
+- status INT DEFAULT 0 (0: ACTIVE, 1: DISABLED)
+- create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+t_permission
+- id BIGSERIAL PK
+- code VARCHAR(128) UNIQUE NOT NULL
+- name VARCHAR(64)
+- description VARCHAR(255)
+- resource VARCHAR(128)
+- action VARCHAR(64)
+- create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+t_user_role
+- id BIGSERIAL PK
+- user_id BIGINT NOT NULL
+- role_id BIGINT NOT NULL
+- create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- UNIQUE(user_id, role_id)
+
+t_role_permission
+- id BIGSERIAL PK
+- role_id BIGINT NOT NULL
+- permission_id BIGINT NOT NULL
+- create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+- UNIQUE(role_id, permission_id)
 
 core 模块
 t_post
@@ -485,7 +586,7 @@ t_chat_message
 - create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
 数据库结构归属
-- identity 模块: t_user, t_follow
+- identity 模块: t_user, t_follow, t_role, t_permission, t_user_role, t_role_permission
 - core 模块: t_post, t_comment, t_like, t_favorite, t_section, t_tag, t_post_tag
 - media 模块: t_media, t_danmaku
 - chat 模块: t_chat_room, t_chat_room_member, t_chat_message
@@ -493,6 +594,14 @@ t_chat_message
 索引与约束清单
 - t_user.username: UNIQUE
 - t_follow(follower_id, following_id): UNIQUE
+- t_role.code: UNIQUE
+- t_permission.code: UNIQUE
+- t_user_role(user_id, role_id): UNIQUE
+- t_role_permission(role_id, permission_id): UNIQUE
+- t_user_role.user_id: INDEX (idx_user_role_user_id)
+- t_user_role.role_id: INDEX (idx_user_role_role_id)
+- t_role_permission.role_id: INDEX (idx_role_perm_role_id)
+- t_role_permission.permission_id: INDEX (idx_role_perm_perm_id)
 - t_like(post_id, user_id): UNIQUE
 - t_section.name: UNIQUE
 - t_tag.name: UNIQUE
@@ -504,8 +613,9 @@ t_chat_message
 
 初始化数据
 - init.sql 内置用户: admin, alice, bob
+- init.sql 内置角色与权限: ADMIN/USER + 相关权限，并为 admin 绑定 ADMIN
 - init.sql 内置分区: design, ui, food
-- identity/schema.sql 仅插入 admin 用户
+- identity/schema.sql 内置 admin 用户与默认角色/权限
 
 备注
 - `backend/**/schema.sql` 与 init.sql 字段基本一致，若有差异以 init.sql 为准

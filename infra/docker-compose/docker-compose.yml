@@ -1,4 +1,8 @@
 name: sidequest
+x-backend-build: &backend_build
+  context: ../../backend
+  args:
+    MAVEN_OPTS: "-Xmx512m -XX:MaxMetaspaceSize=256m"
 services:
   # 核心关系型数据库
   postgres:
@@ -13,7 +17,7 @@ services:
       POSTGRES_DB: sidequest_db
     volumes:
       - ./postgres/data:/var/lib/postgresql/data
-      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sidequest -d sidequest_db -h localhost"]
       interval: 10s
@@ -202,7 +206,7 @@ services:
   # --- Java 微服务 ---
   gateway-service:
     build:
-      context: ../../backend
+      <<: *backend_build
       dockerfile: sidequest-gateway/Dockerfile
     container_name: gateway-service
     restart: unless-stopped
@@ -217,7 +221,7 @@ services:
 
   identity-service:
     build:
-      context: ../../backend
+      <<: *backend_build
       dockerfile: sidequest-identity/Dockerfile
     container_name: identity-service
     restart: unless-stopped
@@ -242,7 +246,7 @@ services:
 
   core-service:
     build:
-      context: ../../backend
+      <<: *backend_build
       dockerfile: sidequest-core/Dockerfile
     container_name: core-service
     restart: unless-stopped
@@ -269,7 +273,7 @@ services:
 
   media-service:
     build:
-      context: ../../backend
+      <<: *backend_build
       dockerfile: sidequest-media/Dockerfile
     container_name: media-service
     restart: unless-stopped
@@ -300,7 +304,7 @@ services:
 
   search-service:
     build:
-      context: ../../backend
+      <<: *backend_build
       dockerfile: sidequest-search/Dockerfile
     container_name: search-service
     restart: unless-stopped
@@ -321,7 +325,7 @@ services:
 
   chat-service:
     build:
-      context: ../../backend
+      <<: *backend_build
       dockerfile: sidequest-chat/Dockerfile
     container_name: chat-service
     restart: unless-stopped
@@ -348,7 +352,7 @@ services:
 
   moderation-service:
     build:
-      context: ../../backend
+      <<: *backend_build
       dockerfile: sidequest-moderation/Dockerfile
     container_name: moderation-service
     restart: unless-stopped
@@ -366,7 +370,7 @@ services:
 
   analytics-service:
     build:
-      context: ../../backend
+      <<: *backend_build
       dockerfile: sidequest-analytics/Dockerfile
     container_name: analytics-service
     restart: unless-stopped
@@ -389,7 +393,7 @@ services:
 
   mcp-service:
     build:
-      context: ../../backend
+      <<: *backend_build
       dockerfile: sidequest-mcp/Dockerfile
     container_name: mcp-service
     restart: unless-stopped

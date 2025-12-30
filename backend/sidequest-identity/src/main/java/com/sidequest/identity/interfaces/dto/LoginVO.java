@@ -15,6 +15,8 @@ public class LoginVO {
     private Long userId;
     private String nickname;
     private String avatar;
+    private java.util.List<String> roles;
+    private java.util.List<String> permissions;
 }
 
 

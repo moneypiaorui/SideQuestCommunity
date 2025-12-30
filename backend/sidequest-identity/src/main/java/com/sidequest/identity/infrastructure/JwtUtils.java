@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -17,9 +18,11 @@ public class JwtUtils {
     @Value("${auth.jwt.expiration:86400000}")
     private long expiration;
 
-    public String generateToken(String userId, String role) {
+    public String generateToken(String userId, String role, List<String> roles, List<String> permissions) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", role);
+        claims.put("roles", roles == null ? "" : String.join(",", roles));
+        claims.put("perms", permissions == null ? "" : String.join(",", permissions));
         
         return Jwts.builder()
                 .setClaims(claims)

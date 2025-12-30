@@ -74,15 +74,24 @@ public class AuthFilter implements GlobalFilter, Ordered {
             
             String userId = claims.getSubject();
             String role = (String) claims.get("role");
+            String roles = (String) claims.get("roles");
+            String permissions = (String) claims.get("perms");
+
+            boolean isAdmin = "ADMIN".equals(role) || hasRole(roles, "ADMIN");
+            if (!StringUtils.hasText(role)) {
+                role = resolvePrimaryRole(roles);
+            }
             
             // RBAC 权限校验 (针对特定路径)
-            if (path.contains("/api/admin") && !"ADMIN".equals(role)) {
+            if (path.contains("/api/admin") && !isAdmin) {
                 return forbidden(exchange);
             }
             
             ServerHttpRequest mutableRequest = request.mutate()
                     .header("X-User-Id", userId)
                     .header("X-User-Role", role)
+                    .header("X-User-Roles", roles == null ? "" : roles)
+                    .header("X-User-Permissions", permissions == null ? "" : permissions)
                     .build();
             
             return chain.filter(exchange.mutate().request(mutableRequest).build());
@@ -105,6 +114,24 @@ public class AuthFilter implements GlobalFilter, Ordered {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(HttpStatus.FORBIDDEN);
         return response.setComplete();
+    }
+
+    private boolean hasRole(String roles, String role) {
+        if (!StringUtils.hasText(roles)) {
+            return false;
+        }
+        return Arrays.asList(roles.split(",")).contains(role);
+    }
+
+    private String resolvePrimaryRole(String roles) {
+        if (!StringUtils.hasText(roles)) {
+            return "USER";
+        }
+        List<String> list = Arrays.asList(roles.split(","));
+        if (list.contains("ADMIN")) {
+            return "ADMIN";
+        }
+        return list.get(0);
     }
 
     @Override
