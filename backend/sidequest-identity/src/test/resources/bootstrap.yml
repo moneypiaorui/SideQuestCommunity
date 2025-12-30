@@ -1,0 +1,10 @@
+spring:
+  cloud:
+    nacos:
+      config:
+        enabled: false
+      discovery:
+        enabled: false
+      enabled: false
+nacos:
+  enabled: false
