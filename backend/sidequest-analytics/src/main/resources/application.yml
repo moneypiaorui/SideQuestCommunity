@@ -13,6 +13,11 @@ spring:
     driver-class-name: com.clickhouse.jdbc.ClickHouseDriver
     username: ${CLICKHOUSE_USER:default}
     password: ${CLICKHOUSE_PASSWORD:}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
 
 management:
   endpoints:

@@ -8,3 +8,6 @@ import org.apache.ibatis.annotations.Mapper;
 public interface DanmakuMapper extends BaseMapper<DanmakuDO> {
 }
 
+
+
+

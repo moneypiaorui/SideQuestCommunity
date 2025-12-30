@@ -1,6 +1,7 @@
-package com.sidequest.core.infrastructure.config;
+package com.sidequest.common.config;
 
 import feign.RequestInterceptor;
+import feign.RequestTemplate;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,7 +14,7 @@ import java.util.Enumeration;
 public class FeignConfig {
 
     @Bean
-    public RequestInterceptor requestInterceptor() {
+    public RequestInterceptor feignRequestInterceptor() {
         return requestTemplate -> {
             ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             if (attributes != null) {
@@ -22,7 +23,7 @@ public class FeignConfig {
                 if (headerNames != null) {
                     while (headerNames.hasMoreElements()) {
                         String name = headerNames.nextElement();
-                        // 转发 X-User-Id 和 X-User-Role 以及 Authorization
+                        // 转发鉴权相关的 Header
                         if ("x-user-id".equalsIgnoreCase(name) || 
                             "x-user-role".equalsIgnoreCase(name) || 
                             "authorization".equalsIgnoreCase(name)) {
@@ -34,4 +35,7 @@ public class FeignConfig {
         };
     }
 }
+
+
+
 

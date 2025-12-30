@@ -2,6 +2,7 @@ package com.sidequest.mcp.interfaces;
 
 import com.sidequest.mcp.application.ToolRegistry;
 import com.sidequest.mcp.infrastructure.feign.CoreClient;
+import com.sidequest.mcp.infrastructure.feign.SearchClient;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ import java.util.Map;
 public class McpController {
     private final ToolRegistry toolRegistry;
     private final CoreClient coreClient;
+    private final SearchClient searchClient;
 
     @PostMapping("/rpc")
     public JsonRpcResponse handleRpc(@RequestBody JsonRpcRequest request) {
@@ -57,9 +59,22 @@ public class McpController {
             dto.setSectionId(arguments.get("sectionId") != null ? Long.valueOf(arguments.get("sectionId").toString()) : null);
             return coreClient.createPost(dto);
         } else if ("add_comment".equals(toolName)) {
+            CoreClient.CommentRequest request = new CoreClient.CommentRequest();
+            request.setPostId(Long.valueOf(arguments.get("postId").toString()));
+            request.setContent((String) arguments.get("content"));
+            return coreClient.addComment(request);
+        } else if ("like_post".equals(toolName)) {
             Long postId = Long.valueOf(arguments.get("postId").toString());
-            String content = (String) arguments.get("content");
-            return coreClient.addComment(postId, content);
+            return coreClient.likePost(postId);
+        } else if ("list_sections".equals(toolName)) {
+            return coreClient.listSections();
+        } else if ("list_popular_tags".equals(toolName)) {
+            return coreClient.listPopularTags();
+        } else if ("search_posts".equals(toolName)) {
+            String keyword = (String) arguments.get("keyword");
+            int page = arguments.get("page") != null ? Integer.parseInt(arguments.get("page").toString()) : 0;
+            int size = arguments.get("size") != null ? Integer.parseInt(arguments.get("size").toString()) : 10;
+            return searchClient.searchPosts(keyword, page, size);
         }
         throw new IllegalArgumentException("Unknown tool: " + toolName);
     }

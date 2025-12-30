@@ -4,6 +4,7 @@ services:
   postgres:
     image: postgres:15
     container_name: sidequest-postgres
+    restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
@@ -13,11 +14,18 @@ services:
     volumes:
       - ./postgres/data:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sidequest -d sidequest_db -h localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   # 注册中心与配置中心
   nacos:
     image: nacos/nacos-server:v2.2.3
     container_name: sidequest-nacos
+    restart: unless-stopped
     environment:
       - MODE=standalone
       - SPRING_DATASOURCE_PLATFORM=derby
@@ -26,22 +34,30 @@ services:
       - "9848:9848"
       - "9849:9849"
     healthcheck:
-      test: ["CMD", "echo", "ok"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8848/nacos/actuator/health >/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 20s
 
   # 缓存与实时数据
   redis:
     image: redis:7.0
     container_name: sidequest-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   # 消息队列
   kafka:
     image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/bitnami/kafka:3.6.2
     container_name: sidequest-kafka
+    restart: unless-stopped
     ports:
       - "9092:9092"
     environment:
@@ -54,11 +70,18 @@ services:
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
       - ALLOW_PLAINTEXT_LISTENER=yes
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
   # 搜索引擎
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.9
     container_name: sidequest-es
+    restart: unless-stopped
     ports:
       - "9200:9200"
     environment:
@@ -69,11 +92,18 @@ services:
                bin/elasticsearch-plugin install --batch https://release.infinilabs.com/analysis-ik/stable/elasticsearch-analysis-ik-7.17.9.zip;
              fi;
              /usr/local/bin/docker-entrypoint.sh elasticsearch"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
 
   # 对象存储
   minio:
     image: minio/minio
     container_name: sidequest-minio
+    restart: unless-stopped
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -83,11 +113,18 @@ services:
     volumes:
       - ./minio/data:/data
     command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/ready >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   # 分析型数据库
   clickhouse:
     image: clickhouse/clickhouse-server:23.3
     container_name: sidequest-clickhouse
+    restart: unless-stopped
     ports:
       - "8123:8123"
       - "9005:9000"
@@ -95,11 +132,18 @@ services:
       nofile:
         soft: 262144
         hard: 262144
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping | grep -q Ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   # --- 前端与网关代理 ---
   nginx:
     image: nginx:alpine
     container_name: sidequest-nginx
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
@@ -161,6 +205,7 @@ services:
       context: ../../backend
       dockerfile: sidequest-gateway/Dockerfile
     container_name: gateway-service
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
@@ -175,6 +220,7 @@ services:
       context: ../../backend
       dockerfile: sidequest-identity/Dockerfile
     container_name: identity-service
+    restart: unless-stopped
     ports:
       - "8081:8081"
     environment:
@@ -188,9 +234,9 @@ services:
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       nacos:
         condition: service_healthy
 
@@ -199,6 +245,7 @@ services:
       context: ../../backend
       dockerfile: sidequest-core/Dockerfile
     container_name: core-service
+    restart: unless-stopped
     ports:
       - "8082:8082"
     environment:
@@ -212,11 +259,11 @@ services:
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
       nacos:
         condition: service_healthy
 
@@ -225,6 +272,7 @@ services:
       context: ../../backend
       dockerfile: sidequest-media/Dockerfile
     container_name: media-service
+    restart: unless-stopped
     ports:
       - "8083:8083"
     environment:
@@ -240,13 +288,13 @@ services:
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
       minio:
-        condition: service_started
+        condition: service_healthy
       nacos:
         condition: service_healthy
 
@@ -255,6 +303,7 @@ services:
       context: ../../backend
       dockerfile: sidequest-search/Dockerfile
     container_name: search-service
+    restart: unless-stopped
     ports:
       - "8084:8084"
     environment:
@@ -264,9 +313,9 @@ services:
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       kafka:
-        condition: service_started
+        condition: service_healthy
       elasticsearch:
-        condition: service_started
+        condition: service_healthy
       nacos:
         condition: service_healthy
 
@@ -275,6 +324,7 @@ services:
       context: ../../backend
       dockerfile: sidequest-chat/Dockerfile
     container_name: chat-service
+    restart: unless-stopped
     ports:
       - "8087:8087"
     environment:
@@ -288,11 +338,11 @@ services:
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
       nacos:
         condition: service_healthy
 
@@ -301,6 +351,7 @@ services:
       context: ../../backend
       dockerfile: sidequest-moderation/Dockerfile
     container_name: moderation-service
+    restart: unless-stopped
     ports:
       - "8085:8085"
     environment:
@@ -309,7 +360,7 @@ services:
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       kafka:
-        condition: service_started
+        condition: service_healthy
       nacos:
         condition: service_healthy
 
@@ -318,6 +369,7 @@ services:
       context: ../../backend
       dockerfile: sidequest-analytics/Dockerfile
     container_name: analytics-service
+    restart: unless-stopped
     ports:
       - "8086:8086"
     environment:
@@ -329,9 +381,9 @@ services:
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       clickhouse:
-        condition: service_started
+        condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
       nacos:
         condition: service_healthy
 
@@ -340,6 +392,7 @@ services:
       context: ../../backend
       dockerfile: sidequest-mcp/Dockerfile
     container_name: mcp-service
+    restart: unless-stopped
     ports:
       - "8088:8087"
     environment:
@@ -348,13 +401,14 @@ services:
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       kafka:
-        condition: service_started
+        condition: service_healthy
       nacos:
         condition: service_healthy
 
   pgadmin:
     image: dpage/pgadmin4
     container_name: sidequest-pgadmin
+    restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: sidequest@example.com
       PGADMIN_DEFAULT_PASSWORD: sidequest

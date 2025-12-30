@@ -1,4 +1,4 @@
-package com.sidequest.analytics.infrastructure;
+package com.sidequest.mcp.infrastructure;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,11 +19,7 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
-                // 放行监控端点
                 .requestMatchers("/actuator/**").permitAll()
-                // 放行公开的统计接口（例如用户公开主页的统计）
-                .requestMatchers("/api/analytics/users/*/stats").permitAll()
-                // 其余请求需要认证
                 .anyRequest().authenticated()
             )
             .addFilterBefore(new HeaderAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
@@ -31,4 +27,7 @@ public class SecurityConfig {
         return http.build();
     }
 }
+
+
+
 

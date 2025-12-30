@@ -11,8 +11,12 @@ public class ToolRegistry {
     private final Map<String, ToolDefinition> tools = new HashMap<>();
 
     public ToolRegistry() {
-        registerTool("create_post", "Create a new post in the community");
-        registerTool("add_comment", "Add a comment to a post");
+        registerTool("create_post", "Create a new post in the community. Arguments: title, content, sectionId");
+        registerTool("add_comment", "Add a comment to a post. Arguments: postId, content");
+        registerTool("like_post", "Like a post. Arguments: postId");
+        registerTool("list_sections", "List all available sections for posting");
+        registerTool("list_popular_tags", "List popular tags");
+        registerTool("search_posts", "Search for posts using keywords. Arguments: keyword, page, size");
     }
 
     public Collection<ToolDefinition> getTools() {
