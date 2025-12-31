@@ -87,7 +87,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
             }
             
             // RBAC 权限校验 (针对特定路径)
-            if (path.contains("/api/admin") && !isAdmin) {
+            if (path.contains("/admin") && !isAdmin) {
                 return forbidden(exchange);
             }
             

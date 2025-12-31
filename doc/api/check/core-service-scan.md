@@ -36,11 +36,11 @@
 - **注意**：虽然`t_favorite`表有`collection_id`字段，但缺少`t_collection`表和相关的CRUD接口
 
 ### 管理后台接口
-- ✅ `GET /api/admin/posts` - 帖子列表（管理后台）
-- ✅ `POST /api/admin/posts/{id}/audit` - 审核帖子
-- ✅ `DELETE /api/admin/posts/{id}` - 删除帖子（管理员）
-- ❌ **缺失**：`POST /api/admin/posts/{id}/pin` - 置顶
-- ❌ **缺失**：`POST /api/admin/posts/{id}/feature` - 加精
+- ✅ `GET /api/core/admin/posts` - 帖子列表（管理后台）
+- ✅ `POST /api/core/admin/posts/{id}/audit` - 审核帖子
+- ✅ `DELETE /api/core/admin/posts/{id}` - 删除帖子（管理员）
+- ❌ **缺失**：`POST /api/core/admin/posts/{id}/pin` - 置顶
+- ❌ **缺失**：`POST /api/core/admin/posts/{id}/feature` - 加精
 
 ## 服务实现检查
 

@@ -13,7 +13,7 @@
   - `POST /api/identity/register`
   - `/api/public/**`
 - **管理接口**（需要ADMIN角色）：
-  - `/api/admin/**`
+  - `/api/core/admin/**`
 - **网关转发**：验证通过后添加`X-User-Id`和`X-User-Role`请求头到下游服务
 
 ### 服务层用户上下文
@@ -549,7 +549,7 @@
 
 #### 2.3 管理后台接口
 
-##### GET /api/admin/posts - 获取帖子列表（管理后台）
+##### GET /api/core/admin/posts - 获取帖子列表（管理后台）
 - **鉴权要求**：需要Token + ADMIN角色
 - **请求头**：`Authorization: Bearer <token>`
 - **查询参数**：
@@ -592,7 +592,7 @@
 }
 ```
 
-##### POST /api/admin/posts/{id}/audit - 审核帖子（管理后台）
+##### POST /api/core/admin/posts/{id}/audit - 审核帖子（管理后台）
 - **鉴权要求**：需要Token + ADMIN角色
 - **请求头**：`Authorization: Bearer <token>`
 - **路径参数**：
@@ -608,7 +608,7 @@
 }
 ```
 
-##### DELETE /api/admin/posts/{id} - 删除帖子（管理后台）
+##### DELETE /api/core/admin/posts/{id} - 删除帖子（管理后台）
 - **鉴权要求**：需要Token + ADMIN角色
 - **请求头**：`Authorization: Bearer <token>`
 - **路径参数**：
@@ -1071,9 +1071,9 @@
 ### 需要管理员角色的接口列表（需要ADMIN角色）
 - `GET /api/identity/admin/users` - 获取用户列表（管理后台）
 - `POST /api/identity/admin/users/{id}/ban` - 封禁用户（管理后台）
-- `GET /api/admin/posts` - 获取帖子列表（管理后台）
-- `POST /api/admin/posts/{id}/audit` - 审核帖子（管理后台）
-- `DELETE /api/admin/posts/{id}` - 删除帖子（管理后台）
+- `GET /api/core/admin/posts` - 获取帖子列表（管理后台）
+- `POST /api/core/admin/posts/{id}/audit` - 审核帖子（管理后台）
+- `DELETE /api/core/admin/posts/{id}` - 删除帖子（管理后台）
 
 ---
 

@@ -122,7 +122,7 @@ GET /api/core/sections → GET /api/core/tags/popular →
 GET /api/media/upload-url → POST /api/core/posts
 
 后台审核流程：
-GET /api/admin/posts?status=0 → POST /api/admin/posts/{id}/audit
+GET /api/core/admin/posts?status=0 → POST /api/core/admin/posts/{id}/audit
 
 后台封禁流程：
 GET /api/identity/admin/users → POST /api/identity/admin/users/{id}/ban

@@ -27,8 +27,8 @@
 ## 3. 后台审核帖子流程
 
 ### 流程步骤
-1. 获取待审核帖子列表 → `GET /api/admin/posts?status=0` ✅（STATUS_AUDITING=0）
-2. 审核帖子 → `POST /api/admin/posts/{id}/audit?pass=true` ✅
+1. 获取待审核帖子列表 → `GET /api/core/admin/posts?status=0` ✅（STATUS_AUDITING=0）
+2. 审核帖子 → `POST /api/core/admin/posts/{id}/audit?pass=true` ✅
 
 ### 问题
 - ❌ **缺少审核工单详情接口**：无法查看审核历史

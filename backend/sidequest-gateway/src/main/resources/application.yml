@@ -22,6 +22,10 @@ spring:
                 redis-rate-limiter.burstCapacity: 10
                 redis-rate-limiter.requestedTokens: 1
                 key-resolver: "#{@userKeyResolver}"
+        - id: identity-admin-route
+          uri: lb://identity-service
+          predicates:
+            - Path=/api/identity/admin/**
         - id: identity-route
           uri: lb://identity-service
           predicates:
