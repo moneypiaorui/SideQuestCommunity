@@ -32,8 +32,10 @@ public class SearchIndexService {
             doc.setAuthorAvatar((String) postMap.get("authorAvatar"));
             doc.setAuthorId(postMap.get("authorId") != null ? Long.valueOf(postMap.get("authorId").toString()) : null);
             doc.setImageUrls((String) postMap.get("imageUrls"));
+            doc.setVideoUrl((String) postMap.get("videoUrl"));
             doc.setSectionId(postMap.get("sectionId") != null ? Long.valueOf(postMap.get("sectionId").toString()) : null);
-            doc.setStatus((Integer) postMap.get("status"));
+            Integer status = postMap.get("status") != null ? Integer.valueOf(postMap.get("status").toString()) : null;
+            doc.setStatus(status);
             doc.setLikeCount((Integer) postMap.getOrDefault("likeCount", 0));
             doc.setCommentCount((Integer) postMap.getOrDefault("commentCount", 0));
             doc.setFavoriteCount((Integer) postMap.getOrDefault("favoriteCount", 0));
@@ -60,6 +62,12 @@ public class SearchIndexService {
                 doc.setCreateTime(System.currentTimeMillis());
             }
             
+            if (status == null || status != 1) {
+                postRepository.deleteById(doc.getId());
+                log.info("Skipped indexing non-normal post: {}", doc.getId());
+                return;
+            }
+
             postRepository.save(doc);
             log.info("Successfully indexed post: {}", doc.getId());
         } catch (Exception e) {

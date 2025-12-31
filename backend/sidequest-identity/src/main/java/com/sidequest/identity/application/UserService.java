@@ -10,13 +10,19 @@ import com.sidequest.identity.interfaces.dto.LoginVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.List;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -27,8 +33,17 @@ public class UserService {
     private final RoleMapper roleMapper;
     private final UserRoleMapper userRoleMapper;
     private final PermissionMapper permissionMapper;
+    private final BanRecordMapper banRecordMapper;
+    private final TokenService tokenService;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final RestTemplate restTemplate;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+
+    @Value("${core.service.base-url:http://core-service:8082}")
+    private String coreServiceBaseUrl;
+    private static final String USER_CACHE_KEY_PREFIX = "user:info:";
+    private static final Duration USER_CACHE_TTL = Duration.ofMinutes(10);
 
     public Page<UserDO> getUserList(int current, int size, Integer status) {
         Page<UserDO> page = new Page<>(current, size);
@@ -40,7 +55,16 @@ public class UserService {
     }
 
     public UserDO getUserById(Long userId) {
-        return userMapper.selectById(userId);
+        String cacheKey = USER_CACHE_KEY_PREFIX + userId;
+        Object cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached instanceof UserDO) {
+            return (UserDO) cached;
+        }
+        UserDO user = userMapper.selectById(userId);
+        if (user != null) {
+            redisTemplate.opsForValue().set(cacheKey, user, USER_CACHE_TTL);
+        }
+        return user;
     }
 
     public void updateProfile(Long userId, String nickname, String avatar, String signature) {
@@ -55,6 +79,7 @@ public class UserService {
                 userDO.setSignature(signature);
             }
             userMapper.updateById(userDO);
+            evictUserCache(userId);
         }
     }
 
@@ -70,13 +95,48 @@ public class UserService {
         
         userDO.setPassword(passwordEncoder.encode(newPassword));
         userMapper.updateById(userDO);
+        evictUserCache(userId);
     }
 
-    public void banUser(Long userId) {
+    public void banUser(Long userId, Long operatorId, String reason) {
         UserDO userDO = userMapper.selectById(userId);
         if (userDO != null) {
             userDO.setStatus(UserDO.STATUS_BANNED);
             userMapper.updateById(userDO);
+            BanRecordDO record = new BanRecordDO();
+            record.setUserId(userId);
+            record.setOperatorId(operatorId);
+            record.setReason(reason);
+            record.setStartTime(LocalDateTime.now());
+            record.setCreateTime(LocalDateTime.now());
+            banRecordMapper.insert(record);
+            evictUserCache(userId);
+        }
+    }
+
+    public void unbanUser(Long userId, Long operatorId) {
+        UserDO userDO = userMapper.selectById(userId);
+        if (userDO != null) {
+            userDO.setStatus(UserDO.STATUS_NORMAL);
+            userMapper.updateById(userDO);
+            BanRecordDO update = new BanRecordDO();
+            update.setEndTime(LocalDateTime.now());
+            banRecordMapper.update(
+                    update,
+                    new LambdaUpdateWrapper<BanRecordDO>()
+                            .eq(BanRecordDO::getUserId, userId)
+                            .isNull(BanRecordDO::getEndTime)
+            );
+            evictUserCache(userId);
+        }
+    }
+
+    public void deleteUser(Long userId) {
+        UserDO userDO = userMapper.selectById(userId);
+        if (userDO != null) {
+            userDO.setStatus(UserDO.STATUS_DELETED);
+            userMapper.updateById(userDO);
+            evictUserCache(userId);
         }
     }
 
@@ -198,6 +258,12 @@ public class UserService {
                 .eq(FollowDO::getFollowingId, followingId)) > 0;
     }
 
+    public Object getUserPosts(Long userId, int current, int size) {
+        String url = coreServiceBaseUrl + "/api/core/posts?current=" + current + "&size=" + size + "&authorId=" + userId;
+        com.sidequest.common.Result<?> result = restTemplate.getForObject(url, com.sidequest.common.Result.class);
+        return result == null ? null : result.getData();
+    }
+
     public List<Long> getFollowingIds(Long userId) {
         return followMapper.selectList(new LambdaQueryWrapper<FollowDO>()
                 .eq(FollowDO::getFollowerId, userId))
@@ -222,18 +288,19 @@ public class UserService {
         
         List<String> roles = userRoleMapper.selectRoleCodesByUserId(user.getId());
         if (roles == null || roles.isEmpty()) {
-            roles = new java.util.ArrayList<>();
+            roles = new ArrayList<>();
             if (user.getRole() != null) {
                 roles.add(user.getRole());
             }
         }
         List<String> permissions = permissionMapper.selectCodesByUserId(user.getId());
         if (permissions == null) {
-            permissions = new java.util.ArrayList<>();
+            permissions = new ArrayList<>();
         }
         String primaryRole = resolvePrimaryRole(roles);
 
         String token = jwtUtils.generateToken(user.getId().toString(), primaryRole, roles, permissions);
+        tokenService.storeToken(token, jwtUtils.getExpiration());
         return LoginVO.builder()
                 .token(token)
                 .expireIn(86400L) // 假设 24 小时
@@ -245,6 +312,56 @@ public class UserService {
                 .build();
     }
 
+    public LoginVO refreshToken(String token) {
+        if (!tokenService.isTokenActive(token)) {
+            throw new RuntimeException("Token not active");
+        }
+        Claims claims = jwtUtils.parseToken(token);
+        Long userId = Long.parseLong(claims.getSubject());
+        UserDO user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new RuntimeException("User not found");
+        }
+        List<String> roles = userRoleMapper.selectRoleCodesByUserId(userId);
+        if (roles == null || roles.isEmpty()) {
+            roles = new ArrayList<>();
+            if (user.getRole() != null) {
+                roles.add(user.getRole());
+            }
+        }
+        List<String> permissions = permissionMapper.selectCodesByUserId(userId);
+        if (permissions == null) {
+            permissions = new ArrayList<>();
+        }
+        String primaryRole = resolvePrimaryRole(roles);
+        String newToken = jwtUtils.generateToken(userId.toString(), primaryRole, roles, permissions);
+        tokenService.invalidateToken(token);
+        tokenService.storeToken(newToken, jwtUtils.getExpiration());
+        return LoginVO.builder()
+                .token(newToken)
+                .expireIn(86400L)
+                .userId(userId)
+                .nickname(user.getNickname())
+                .avatar(user.getAvatar())
+                .roles(roles)
+                .permissions(permissions)
+                .build();
+    }
+
+    public void logout(String token) {
+        tokenService.invalidateToken(token);
+    }
+
+    public void resetPassword(String username, String newPassword) {
+        UserDO userDO = userMapper.selectByUsername(username);
+        if (userDO == null) {
+            throw new RuntimeException("User not found");
+        }
+        userDO.setPassword(passwordEncoder.encode(newPassword));
+        userMapper.updateById(userDO);
+        evictUserCache(userDO.getId());
+    }
+
     private String resolvePrimaryRole(List<String> roles) {
         if (roles != null && roles.contains("ADMIN")) {
             return "ADMIN";
@@ -253,6 +370,10 @@ public class UserService {
             return roles.get(0);
         }
         return "USER";
+    }
+
+    private void evictUserCache(Long userId) {
+        redisTemplate.delete(USER_CACHE_KEY_PREFIX + userId);
     }
 }
 

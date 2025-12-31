@@ -132,6 +132,8 @@ services:
     ports:
       - "8123:8123"
       - "9005:9000"
+    volumes:
+      - ./clickhouse/init:/docker-entrypoint-initdb.d:ro
     ulimits:
       nofile:
         soft: 262144
@@ -214,6 +216,7 @@ services:
       - "8080:8080"
     environment:
       - SPRING_CLOUD_NACOS_SERVER_ADDR=nacos:8848
+      - REDIS_HOST=redis
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       nacos:
@@ -361,8 +364,16 @@ services:
     environment:
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - SPRING_CLOUD_NACOS_SERVER_ADDR=nacos:8848
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/sidequest_db
+      - SPRING_DATASOURCE_USERNAME=sidequest
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_DATA_REDIS_HOST=redis
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
       kafka:
         condition: service_healthy
       nacos:
@@ -382,6 +393,7 @@ services:
       - SPRING_DATASOURCE_USERNAME=default
       - SPRING_DATASOURCE_PASSWORD=
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SPRING_DATA_REDIS_HOST=redis
       - SPRING_PROFILES_ACTIVE=dev
     depends_on:
       clickhouse:

@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/core/admin/posts")
+@RequestMapping("/api/admin/posts")
 @RequiredArgsConstructor
 public class AdminController {
     private final PostService postService;
@@ -31,6 +31,18 @@ public class AdminController {
     public Result<String> deletePost(@PathVariable Long id) {
         postService.deletePost(id);
         return Result.success("Post deleted");
+    }
+
+    @PostMapping("/{id}/pin")
+    public Result<String> pinPost(@PathVariable Long id, @RequestParam boolean pinned) {
+        postService.pinPost(id, pinned);
+        return Result.success(pinned ? "Post pinned" : "Post unpinned");
+    }
+
+    @PostMapping("/{id}/feature")
+    public Result<String> featurePost(@PathVariable Long id, @RequestParam boolean featured) {
+        postService.featurePost(id, featured);
+        return Result.success(featured ? "Post featured" : "Post unfeatured");
     }
 }
 

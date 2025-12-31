@@ -1,15 +1,20 @@
 ﻿SideQuestCommunity 数据库说明
 
 概览
-- 数据库类型: PostgreSQL
+- 数据库类型: PostgreSQL (业务数据), ClickHouse (analytics 事件)
 - 表前缀: t_
-- 主要模块: identity, core, media, chat
-- 初始化脚本: `infra/docker-compose/postgres/init.sql`
+- 主要模块: identity, core, media, chat, moderation
+- 初始化脚本: `infra/docker-compose/postgres/init/`
 - 服务内 schema:
   - identity: `backend/sidequest-identity/src/main/resources/schema.sql`
   - core: `backend/sidequest-core/src/main/resources/schema.sql`
   - media: `backend/sidequest-media/src/main/resources/schema.sql`
-- 说明: chat 相关表目前仅在 init.sql 中定义
+- 说明: chat 相关表目前仅在 `infra/docker-compose/postgres/init/30_schema_chat.sql` 中定义
+
+Moderation 模块表
+- t_sensitive_word: 敏感词库（word, level, status, create_time）
+- t_moderation_case: 审核工单（content_type, result, level, reason, status, operator_id）
+- t_report: 举报记录（target_type, target_id, reporter_id, status, handler_id, handle_result）
 - 关系约束: 当前 SQL 未显式声明外键，表之间依赖为逻辑约定
 
 相关文档
@@ -47,6 +52,9 @@ erDiagram
     t_post ||--o{ t_danmaku : "video_id"
     t_user ||--o{ t_danmaku : "user_id"
 ```
+
+ClickHouse (analytics)
+- events: 事件流明细（event_type, user_id, event_time, event_data, created_at）
 
 Mermaid UML 关系图
 ```mermaid

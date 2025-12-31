@@ -37,7 +37,11 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/api/core/tags",
             "/api/core/interactions/comments",
             "/api/identity/users",
-            "/api/search/user/posts"
+            "/api/search/posts",
+            "/api/search/posts/advanced",
+            "/api/search/user/posts",
+            "/api/search/tags",
+            "/api/analytics/users"
     );
 
     @Override

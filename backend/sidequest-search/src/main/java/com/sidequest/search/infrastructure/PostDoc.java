@@ -18,7 +18,7 @@ public class PostDoc {
     @Field(type = FieldType.Text, analyzer = "ik_smart")
     private String content;
     
-    @Field(type = FieldType.Keyword)
+    @Field(type = FieldType.Text, analyzer = "ik_smart")
     private String authorName;
 
     @Field(type = FieldType.Keyword)
@@ -29,6 +29,9 @@ public class PostDoc {
     
     @Field(type = FieldType.Keyword)
     private String imageUrls;
+
+    @Field(type = FieldType.Keyword)
+    private String videoUrl;
     
     @Field(type = FieldType.Long)
     private Long sectionId;

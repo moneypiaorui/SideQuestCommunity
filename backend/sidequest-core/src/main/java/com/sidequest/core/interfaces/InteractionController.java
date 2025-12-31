@@ -3,11 +3,10 @@ package com.sidequest.core.interfaces;
 import com.sidequest.common.Result;
 import com.sidequest.common.context.UserContext;
 import com.sidequest.core.application.PostService;
-import com.sidequest.core.infrastructure.CommentDO;
-import com.sidequest.core.infrastructure.FavoriteDO;
 import com.sidequest.core.interfaces.dto.CommentRequest;
 import com.sidequest.core.interfaces.dto.CommentVO;
 import com.sidequest.core.interfaces.dto.PostVO;
+import com.sidequest.core.interfaces.dto.RatingRequest;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +22,11 @@ public class InteractionController {
     @GetMapping("/comments")
     public Result<List<CommentVO>> getComments(@RequestParam Long postId) {
         return Result.success(postService.getComments(postId));
+    }
+
+    @GetMapping("/comments/{id}/replies")
+    public Result<List<CommentVO>> getReplies(@PathVariable Long id) {
+        return Result.success(postService.getReplies(id));
     }
 
     @GetMapping("/favorites")
@@ -51,6 +55,14 @@ public class InteractionController {
         return Result.success("Comment added");
     }
 
+    @DeleteMapping("/comments/{id}")
+    public Result<String> deleteComment(@PathVariable Long id) {
+        String userId = UserContext.getUserId();
+        if (userId == null) return Result.error(401, "Unauthorized");
+        postService.deleteComment(userId, id);
+        return Result.success("Comment deleted");
+    }
+
     @PostMapping("/like")
     public Result<String> likePost(@RequestParam Long postId) {
         String userId = UserContext.getUserId();
@@ -65,6 +77,14 @@ public class InteractionController {
         if (userId == null) return Result.error(401, "Unauthorized");
         postService.favoritePost(userId, postId, collectionId);
         return Result.success("Favorited successfully");
+    }
+
+    @PostMapping("/rating")
+    public Result<String> ratePost(@Valid @RequestBody RatingRequest request) {
+        String userId = UserContext.getUserId();
+        if (userId == null) return Result.error(401, "Unauthorized");
+        postService.ratePost(userId, request.getPostId(), request.getScore());
+        return Result.success("Rated successfully");
     }
 }
 

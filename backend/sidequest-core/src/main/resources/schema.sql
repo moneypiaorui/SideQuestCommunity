@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS t_post (
     view_count INT DEFAULT 0,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_pinned BOOLEAN DEFAULT FALSE,
+    is_featured BOOLEAN DEFAULT FALSE,
     image_urls TEXT,
     video_url VARCHAR(255),
     video_cover_url VARCHAR(255),
@@ -41,6 +43,27 @@ CREATE TABLE IF NOT EXISTS t_favorite (
     user_id BIGINT NOT NULL,
     collection_id BIGINT,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS t_collection (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    description VARCHAR(255),
+    cover_url VARCHAR(255),
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_collection_user_id ON t_collection(user_id);
+
+CREATE TABLE IF NOT EXISTS t_rating (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    score INT NOT NULL,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(post_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS t_section (

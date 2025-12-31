@@ -4,9 +4,24 @@ server:
 spring:
   application:
     name: gateway-service
+  redis:
+    host: ${REDIS_HOST:redis}
+    port: ${REDIS_PORT:6379}
   cloud:
     gateway:
       routes:
+        - id: core-write-route
+          uri: lb://core-service
+          predicates:
+            - Path=/api/core/posts/**, /api/core/interactions/**, /api/core/collections/**
+            - Method=POST,PUT,DELETE
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
         - id: identity-route
           uri: lb://identity-service
           predicates:
@@ -15,6 +30,18 @@ spring:
           uri: lb://core-service
           predicates:
             - Path=/api/core/**
+        - id: media-write-route
+          uri: lb://media-service
+          predicates:
+            - Path=/api/media/**
+            - Method=POST,DELETE
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 2
+                redis-rate-limiter.burstCapacity: 4
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
         - id: media-route
           uri: lb://media-service
           predicates:
@@ -31,6 +58,18 @@ spring:
           uri: lb://mcp-service
           predicates:
             - Path=/api/mcp/**
+        - id: chat-write-route
+          uri: lb://chat-service
+          predicates:
+            - Path=/api/chat/**
+            - Method=POST,DELETE
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@userKeyResolver}"
         - id: chat-route
           uri: lb://chat-service
           predicates:

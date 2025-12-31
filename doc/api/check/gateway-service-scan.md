@@ -34,3 +34,8 @@
 2. 实现灰度发布功能
 3. 实现A/B测试分流
 
+
+## Update Notes (ASCII)
+- Added Redis-based rate limiting for core/media/chat write routes.
+- Added per-user/IP key resolver and gateway Redis config.
+- Expanded public GET allowlist for search and analytics user stats.

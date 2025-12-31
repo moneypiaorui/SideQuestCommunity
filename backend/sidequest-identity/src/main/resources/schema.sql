@@ -62,6 +62,27 @@ CREATE INDEX IF NOT EXISTS idx_user_role_role_id ON t_user_role(role_id);
 CREATE INDEX IF NOT EXISTS idx_role_perm_role_id ON t_role_permission(role_id);
 CREATE INDEX IF NOT EXISTS idx_role_perm_perm_id ON t_role_permission(permission_id);
 
+CREATE TABLE IF NOT EXISTS t_ban_record (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    reason VARCHAR(255),
+    operator_id BIGINT,
+    start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    end_time TIMESTAMP,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS t_notification (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    type VARCHAR(32) NOT NULL,
+    content TEXT,
+    status INT DEFAULT 0,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_user_id ON t_notification(user_id);
+
 INSERT INTO t_user (username, password, nickname, avatar, signature, role, status, follower_count, following_count, total_liked_count, post_count)
 VALUES
     ('admin', '$2b$12$qhVSGDjFxzI.bnlbf5gT3e.AcPA.snhkXSBNF7aA/Mmu4Kp3pnZfu', 'Admin', '', '', 'ADMIN', 0, 0, 0, 0, 0)

@@ -4,9 +4,11 @@ import com.sidequest.core.domain.Post;
 import com.sidequest.core.domain.service.PostDomainService;
 import com.sidequest.core.infrastructure.CommentDO;
 import com.sidequest.core.infrastructure.FavoriteDO;
+import com.sidequest.core.infrastructure.CollectionDO;
 import com.sidequest.core.infrastructure.PostDO;
 import com.sidequest.core.infrastructure.LikeDO;
 import com.sidequest.core.infrastructure.PostTagDO;
+import com.sidequest.core.infrastructure.RatingDO;
 import com.sidequest.core.infrastructure.SectionDO;
 import com.sidequest.core.infrastructure.TagDO;
 import com.sidequest.core.infrastructure.feign.IdentityClient;
@@ -45,6 +47,8 @@ public class PostService {
     private final CommentMapper commentMapper;
     private final LikeMapper likeMapper;
     private final FavoriteMapper favoriteMapper;
+    private final CollectionMapper collectionMapper;
+    private final RatingMapper ratingMapper;
     private final SectionMapper sectionMapper;
     private final TagMapper tagMapper;
     private final PostTagMapper postTagMapper;
@@ -53,11 +57,14 @@ public class PostService {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
-    public Page<PostVO> getPostList(int current, int size, Long sectionId, String tag, String currentUserId) {
+    public Page<PostVO> getPostList(int current, int size, Long sectionId, String tag, Long authorId, String currentUserId) {
         Page<PostDO> page = new Page<>(current, size);
         LambdaQueryWrapper<PostDO> queryWrapper = new LambdaQueryWrapper<>();
         if (sectionId != null) {
             queryWrapper.eq(PostDO::getSectionId, sectionId);
+        }
+        if (authorId != null) {
+            queryWrapper.eq(PostDO::getAuthorId, authorId);
         }
         if (tag != null && !tag.isBlank()) {
             TagDO tagDO = tagMapper.selectOne(new LambdaQueryWrapper<TagDO>().eq(TagDO::getName, tag));
@@ -193,6 +200,33 @@ public class PostService {
         return sectionMapper.selectList(new LambdaQueryWrapper<SectionDO>().eq(SectionDO::getStatus, 0));
     }
 
+    public SectionDO getSectionDetail(Long id) {
+        return sectionMapper.selectById(id);
+    }
+
+    public List<TagDO> getAllTags() {
+        return tagMapper.selectList(null);
+    }
+
+    public Page<PostVO> getMyPosts(String userId, int current, int size) {
+        LambdaQueryWrapper<PostDO> queryWrapper = new LambdaQueryWrapper<PostDO>()
+                .eq(PostDO::getAuthorId, Long.parseLong(userId))
+                .ne(PostDO::getStatus, PostDO.STATUS_DELETED)
+                .orderByDesc(PostDO::getCreateTime);
+        return getPostVOPage(current, size, userId, queryWrapper);
+    }
+
+    public Page<PostVO> getRecommendedPosts(int current, int size, String currentUserId) {
+        LambdaQueryWrapper<PostDO> queryWrapper = new LambdaQueryWrapper<PostDO>()
+                .eq(PostDO::getStatus, PostDO.STATUS_NORMAL)
+                .orderByDesc(PostDO::getIsPinned)
+                .orderByDesc(PostDO::getIsFeatured)
+                .orderByDesc(PostDO::getViewCount)
+                .orderByDesc(PostDO::getLikeCount)
+                .orderByDesc(PostDO::getCreateTime);
+        return getPostVOPage(current, size, currentUserId, queryWrapper);
+    }
+
     public List<TagDO> getPopularTags() {
         return tagMapper.selectList(
                 new LambdaQueryWrapper<TagDO>()
@@ -256,6 +290,38 @@ public class PostService {
             if (user != null) {
                 vo.setNickname(user.getNickname());
                 vo.setAvatar(user.getAvatar()); 
+            }
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
+    public List<CommentVO> getReplies(Long commentId) {
+        LambdaQueryWrapper<CommentDO> queryWrapper = new LambdaQueryWrapper<CommentDO>()
+                .eq(CommentDO::getParentId, commentId)
+                .orderByAsc(CommentDO::getCreateTime);
+        List<CommentDO> comments = commentMapper.selectList(queryWrapper);
+        if (comments.isEmpty()) return List.of();
+
+        Set<Long> userIds = comments.stream().map(CommentDO::getUserId).collect(Collectors.toSet());
+        Map<Long, IdentityClient.UserDTO> userMap = userIds.stream().collect(Collectors.toMap(
+                id -> id,
+                id -> {
+                    try {
+                        Result<IdentityClient.UserDTO> res = identityClient.getUserById(id);
+                        return res.getData();
+                    } catch (Exception e) {
+                        return null;
+                    }
+                }
+        ));
+
+        return comments.stream().map(c -> {
+            CommentVO vo = new CommentVO();
+            BeanUtils.copyProperties(c, vo);
+            IdentityClient.UserDTO user = userMap.get(c.getUserId());
+            if (user != null) {
+                vo.setNickname(user.getNickname());
+                vo.setAvatar(user.getAvatar());
             }
             return vo;
         }).collect(Collectors.toList());
@@ -325,6 +391,21 @@ public class PostService {
         }
     }
 
+    @Transactional
+    public void deletePostByUser(Long postId, Long userId) {
+        PostDO post = postMapper.selectById(postId);
+        if (post == null) {
+            throw new RuntimeException("Post not found");
+        }
+        if (!post.getAuthorId().equals(userId)) {
+            throw new RuntimeException("No permission to delete post");
+        }
+        post.setStatus(PostDO.STATUS_DELETED);
+        post.setUpdateTime(LocalDateTime.now());
+        postMapper.updateById(post);
+        kafkaTemplate.send("post-delete-topic", postId.toString(), "Delete post " + postId);
+    }
+
     public Page<PostDO> adminGetPostList(int current, int size, Integer status) {
         Page<PostDO> page = new Page<>(current, size);
         LambdaQueryWrapper<PostDO> queryWrapper = new LambdaQueryWrapper<>();
@@ -333,6 +414,28 @@ public class PostService {
         }
         queryWrapper.orderByDesc(PostDO::getCreateTime);
         return postMapper.selectPage(page, queryWrapper);
+    }
+
+    @Transactional
+    public void pinPost(Long id, boolean pinned) {
+        PostDO post = postMapper.selectById(id);
+        if (post == null) {
+            throw new RuntimeException("Post not found");
+        }
+        post.setIsPinned(pinned);
+        post.setUpdateTime(LocalDateTime.now());
+        postMapper.updateById(post);
+    }
+
+    @Transactional
+    public void featurePost(Long id, boolean featured) {
+        PostDO post = postMapper.selectById(id);
+        if (post == null) {
+            throw new RuntimeException("Post not found");
+        }
+        post.setIsFeatured(featured);
+        post.setUpdateTime(LocalDateTime.now());
+        postMapper.updateById(post);
     }
 
     @Transactional
@@ -405,6 +508,8 @@ public class PostService {
         postDO.setViewCount(0);
         postDO.setCreateTime(post.getCreateTime());
         postDO.setUpdateTime(LocalDateTime.now());
+        postDO.setIsPinned(false);
+        postDO.setIsFeatured(false);
         
         postDO.setVideoUrl(post.getVideoUrl());
         postDO.setVideoCoverUrl(post.getVideoCoverUrl());
@@ -428,6 +533,41 @@ public class PostService {
         kafkaTemplate.send("user-events", "post_create", "User " + userId + " created post " + postDO.getId());
 
         return postDO.getId();
+    }
+
+    @Transactional
+    public void updatePost(Long postId, Long userId, com.sidequest.core.interfaces.dto.UpdatePostDTO dto) {
+        PostDO post = postMapper.selectById(postId);
+        if (post == null) {
+            throw new RuntimeException("Post not found");
+        }
+        if (!post.getAuthorId().equals(userId)) {
+            throw new RuntimeException("No permission to update post");
+        }
+        if (dto.getSectionId() != null) {
+            SectionDO section = sectionMapper.selectById(dto.getSectionId());
+            if (section == null || section.getStatus() != 0) {
+                throw new RuntimeException("Invalid section");
+            }
+        }
+        if (dto.getContent() != null && !postDomainService.validateContent(dto.getContent())) {
+            throw new RuntimeException("Content violates community rules");
+        }
+        post.setTitle(dto.getTitle());
+        post.setContent(dto.getContent());
+        post.setSectionId(dto.getSectionId());
+        post.setVideoUrl(dto.getVideoUrl());
+        post.setVideoCoverUrl(dto.getVideoCoverUrl());
+        post.setVideoDuration(dto.getVideoDuration());
+        post.setMediaId(dto.getMediaId());
+        post.setUpdateTime(LocalDateTime.now());
+        if (dto.getImageUrls() != null) {
+            post.setImageUrls(String.join(",", dto.getImageUrls()));
+        }
+        postMapper.updateById(post);
+
+        postTagMapper.delete(new LambdaQueryWrapper<PostTagDO>().eq(PostTagDO::getPostId, postId));
+        savePostTags(postId, dto.getTags());
     }
 
     @Transactional
@@ -460,6 +600,43 @@ public class PostService {
             ));
         } catch (Exception e) {
             log.error("Failed to send comment event", e);
+        }
+    }
+
+    @Transactional
+    public void deleteComment(String userId, Long commentId) {
+        CommentDO comment = commentMapper.selectById(commentId);
+        if (comment == null) {
+            throw new RuntimeException("Comment not found");
+        }
+        if (!comment.getUserId().equals(Long.parseLong(userId))) {
+            throw new RuntimeException("No permission to delete comment");
+        }
+        commentMapper.deleteById(commentId);
+        postMapper.update(null, new LambdaUpdateWrapper<PostDO>()
+                .eq(PostDO::getId, comment.getPostId())
+                .setSql("comment_count = comment_count - 1"));
+    }
+
+    @Transactional
+    public void ratePost(String userId, Long postId, Integer score) {
+        if (score == null || score < 1 || score > 5) {
+            throw new RuntimeException("Score must be between 1 and 5");
+        }
+        LambdaQueryWrapper<RatingDO> query = new LambdaQueryWrapper<RatingDO>()
+                .eq(RatingDO::getPostId, postId)
+                .eq(RatingDO::getUserId, Long.parseLong(userId));
+        RatingDO existing = ratingMapper.selectOne(query);
+        if (existing == null) {
+            RatingDO rating = new RatingDO();
+            rating.setPostId(postId);
+            rating.setUserId(Long.parseLong(userId));
+            rating.setScore(score);
+            rating.setCreateTime(LocalDateTime.now());
+            ratingMapper.insert(rating);
+        } else {
+            existing.setScore(score);
+            ratingMapper.updateById(existing);
         }
     }
 
@@ -506,6 +683,12 @@ public class PostService {
     @Transactional
     public void favoritePost(String userId, Long postId, Long collectionId) {
         Long uid = Long.parseLong(userId);
+        if (collectionId != null) {
+            CollectionDO collection = collectionMapper.selectById(collectionId);
+            if (collection == null || !collection.getUserId().equals(uid)) {
+                throw new RuntimeException("Invalid collection");
+            }
+        }
         LambdaQueryWrapper<FavoriteDO> query = new LambdaQueryWrapper<FavoriteDO>()
                 .eq(FavoriteDO::getPostId, postId)
                 .eq(FavoriteDO::getUserId, uid);
@@ -540,6 +723,71 @@ public class PostService {
                 log.error("Failed to send favorite event", e);
             }
         }
+    }
+
+    public Page<CollectionDO> getCollections(String userId, int current, int size) {
+        Page<CollectionDO> page = new Page<>(current, size);
+        return collectionMapper.selectPage(page, new LambdaQueryWrapper<CollectionDO>()
+                .eq(CollectionDO::getUserId, Long.parseLong(userId))
+                .orderByDesc(CollectionDO::getUpdateTime));
+    }
+
+    public CollectionDO createCollection(String userId, com.sidequest.core.interfaces.dto.CollectionRequest request) {
+        CollectionDO collection = new CollectionDO();
+        collection.setUserId(Long.parseLong(userId));
+        collection.setName(request.getName());
+        collection.setDescription(request.getDescription());
+        collection.setCoverUrl(request.getCoverUrl());
+        collection.setCreateTime(LocalDateTime.now());
+        collection.setUpdateTime(LocalDateTime.now());
+        collectionMapper.insert(collection);
+        return collection;
+    }
+
+    public CollectionDO updateCollection(String userId, Long id, com.sidequest.core.interfaces.dto.CollectionRequest request) {
+        CollectionDO collection = collectionMapper.selectById(id);
+        if (collection == null || !collection.getUserId().equals(Long.parseLong(userId))) {
+            throw new RuntimeException("Collection not found");
+        }
+        collection.setName(request.getName());
+        collection.setDescription(request.getDescription());
+        collection.setCoverUrl(request.getCoverUrl());
+        collection.setUpdateTime(LocalDateTime.now());
+        collectionMapper.updateById(collection);
+        return collection;
+    }
+
+    public void deleteCollection(String userId, Long id) {
+        CollectionDO collection = collectionMapper.selectById(id);
+        if (collection == null || !collection.getUserId().equals(Long.parseLong(userId))) {
+            throw new RuntimeException("Collection not found");
+        }
+        collectionMapper.deleteById(id);
+        favoriteMapper.update(
+                new FavoriteDO(),
+                new LambdaUpdateWrapper<FavoriteDO>()
+                        .eq(FavoriteDO::getCollectionId, id)
+                        .eq(FavoriteDO::getUserId, Long.parseLong(userId))
+                        .set(FavoriteDO::getCollectionId, null)
+        );
+    }
+
+    public void moveFavoriteToCollection(String userId, Long collectionId, Long postId) {
+        LambdaQueryWrapper<FavoriteDO> query = new LambdaQueryWrapper<FavoriteDO>()
+                .eq(FavoriteDO::getUserId, Long.parseLong(userId))
+                .eq(FavoriteDO::getPostId, postId);
+        FavoriteDO favorite = favoriteMapper.selectOne(query);
+        if (favorite == null) {
+            throw new RuntimeException("Favorite not found");
+        }
+        if (collectionId != null) {
+            CollectionDO collection = collectionMapper.selectById(collectionId);
+            if (collection == null || !collection.getUserId().equals(Long.parseLong(userId))) {
+                throw new RuntimeException("Invalid collection");
+            }
+        }
+        favorite.setCollectionId(collectionId);
+        favoriteMapper.updateById(favorite);
     }
 
     private List<String> normalizeTagNames(List<String> tags) {

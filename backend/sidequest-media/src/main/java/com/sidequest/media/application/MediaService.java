@@ -8,9 +8,9 @@ import com.sidequest.media.infrastructure.mapper.DanmakuMapper;
 import com.sidequest.media.infrastructure.mapper.MediaMapper;
 import io.minio.*;
 import io.minio.http.Method;
+import io.minio.messages.Item;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -98,6 +98,10 @@ public class MediaService {
 
     public List<MediaDO> getAuthorMedia(Long authorId) {
         return mediaMapper.selectList(new LambdaQueryWrapper<MediaDO>().eq(MediaDO::getAuthorId, authorId));
+    }
+
+    public MediaDO getMediaById(Long mediaId) {
+        return mediaMapper.selectById(mediaId);
     }
 
     public String getUploadUrl(String fileName) {
@@ -252,6 +256,14 @@ public class MediaService {
             kafkaTemplate.send("video-ready-topic", mediaId.toString(), payload);
             log.info("Sent video-ready notification for mediaId: {}. Payload: {}", mediaId, payload);
 
+            Map<String, Object> processedPayload = Map.of(
+                "mediaId", mediaId,
+                "videoUrl", hlsUrl,
+                "videoCoverUrl", finalCoverUrl
+            );
+            kafkaTemplate.send("media.processed", mediaId.toString(), objectMapper.writeValueAsString(processedPayload));
+            log.info("Sent media.processed event for mediaId: {}", mediaId);
+
         } catch (Exception e) {
             log.error("HLS processing failed for mediaId: {}", mediaId, e);
             updateStatus(mediaId, MediaDO.STATUS_FAILED);
@@ -273,6 +285,13 @@ public class MediaService {
         return mediaDO != null ? mediaDO.getStatus() : null;
     }
 
+    public MediaDO completeUpload(MediaDO mediaDO) {
+        if (mediaDO.getUrl() == null || mediaDO.getUrl().isBlank()) {
+            mediaDO.setUrl(buildObjectUrl(mediaDO.getFileKey()));
+        }
+        return registerMedia(mediaDO);
+    }
+
     public void updateStatus(Long mediaId, Integer status) {
         MediaDO mediaDO = mediaMapper.selectById(mediaId);
         if (mediaDO != null) {
@@ -287,11 +306,14 @@ public class MediaService {
         mediaDO.setCreateTime(LocalDateTime.now());
         mediaMapper.insert(mediaDO);
         log.info("Successfully registered media: {}", mediaDO.getId());
-        
+
+        sendMediaUploadedEvent(mediaDO);
+
         if ("video".equals(mediaDO.getFileType())) {
             processVideo(mediaDO.getId());
         } else {
             updateStatus(mediaDO.getId(), MediaDO.STATUS_READY);
+            sendMediaProcessedEvent(mediaDO);
         }
         return mediaDO;
     }
@@ -300,6 +322,97 @@ public class MediaService {
         danmakuDO.setCreateTime(LocalDateTime.now());
         danmakuMapper.insert(danmakuDO);
         log.info("Successfully saved danmaku to DB for video {}: {}", danmakuDO.getVideoId(), danmakuDO.getContent());
+    }
+
+    public List<DanmakuDO> getDanmakuRange(Long videoId, Long fromMs, Long toMs) {
+        return danmakuMapper.selectList(new LambdaQueryWrapper<DanmakuDO>()
+                .eq(DanmakuDO::getVideoId, videoId)
+                .ge(DanmakuDO::getTimeOffsetMs, fromMs)
+                .le(DanmakuDO::getTimeOffsetMs, toMs));
+    }
+
+    public DanmakuDO deleteDanmaku(Long danmakuId, Long userId) {
+        DanmakuDO danmakuDO = danmakuMapper.selectById(danmakuId);
+        if (danmakuDO == null) {
+            return null;
+        }
+        if (!userId.equals(danmakuDO.getUserId())) {
+            return null;
+        }
+        danmakuMapper.deleteById(danmakuId);
+        return danmakuDO;
+    }
+
+    public void deleteMedia(MediaDO mediaDO) {
+        if (mediaDO == null) {
+            return;
+        }
+        mediaMapper.deleteById(mediaDO.getId());
+        deleteMediaObjects(mediaDO);
+    }
+
+    private void sendMediaUploadedEvent(MediaDO mediaDO) {
+        try {
+            Map<String, Object> payload = Map.of(
+                "mediaId", mediaDO.getId(),
+                "fileKey", mediaDO.getFileKey(),
+                "fileType", mediaDO.getFileType(),
+                "url", mediaDO.getUrl()
+            );
+            kafkaTemplate.send("media.uploaded", mediaDO.getId().toString(), objectMapper.writeValueAsString(payload));
+            log.info("Sent media.uploaded event for mediaId: {}", mediaDO.getId());
+        } catch (Exception e) {
+            log.warn("Failed to send media.uploaded event for mediaId: {}", mediaDO.getId(), e);
+        }
+    }
+
+    private void sendMediaProcessedEvent(MediaDO mediaDO) {
+        try {
+            Map<String, Object> payload = Map.of(
+                "mediaId", mediaDO.getId(),
+                "url", mediaDO.getUrl()
+            );
+            kafkaTemplate.send("media.processed", mediaDO.getId().toString(), objectMapper.writeValueAsString(payload));
+            log.info("Sent media.processed event for mediaId: {}", mediaDO.getId());
+        } catch (Exception e) {
+            log.warn("Failed to send media.processed event for mediaId: {}", mediaDO.getId(), e);
+        }
+    }
+
+    private String buildObjectUrl(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return null;
+        }
+        String base = (publicEndpoint != null && !publicEndpoint.isBlank()) ? publicEndpoint : endpoint;
+        return base + "/" + bucket + "/" + objectKey;
+    }
+
+    private void deleteMediaObjects(MediaDO mediaDO) {
+        try {
+            if (mediaDO.getFileKey() != null && !mediaDO.getFileKey().isBlank()) {
+                minioClient.removeObject(RemoveObjectArgs.builder()
+                        .bucket(bucket)
+                        .object(mediaDO.getFileKey())
+                        .build());
+            }
+            if ("video".equals(mediaDO.getFileType())) {
+                String prefix = "hls/" + mediaDO.getId() + "/";
+                Iterable<Result<Item>> items = minioClient.listObjects(ListObjectsArgs.builder()
+                        .bucket(bucket)
+                        .prefix(prefix)
+                        .recursive(true)
+                        .build());
+                for (Result<Item> itemResult : items) {
+                    Item item = itemResult.get();
+                    minioClient.removeObject(RemoveObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(item.objectName())
+                            .build());
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to delete media objects for mediaId: {}", mediaDO.getId(), e);
+        }
     }
 }
 

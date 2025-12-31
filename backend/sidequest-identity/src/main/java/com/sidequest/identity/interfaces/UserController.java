@@ -136,11 +136,35 @@ public class UserController {
         return Result.success(voPage);
     }
 
+    @GetMapping("/users/{id}/posts")
+    public Result<Object> getUserPosts(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "1") int current,
+            @RequestParam(defaultValue = "10") int size) {
+        return Result.success(userService.getUserPosts(id, current, size));
+    }
+
     @PostMapping("/admin/users/{id}/ban")
     @PreAuthorize("hasAuthority('USER_BAN')")
-    public Result<String> banUser(@PathVariable Long id) {
-        userService.banUser(id);
+    public Result<String> banUser(@PathVariable Long id, @RequestParam(required = false) String reason) {
+        String operatorId = UserContext.getUserId();
+        userService.banUser(id, operatorId == null ? null : Long.parseLong(operatorId), reason);
         return Result.success("User banned");
+    }
+
+    @PostMapping("/admin/users/{id}/unban")
+    @PreAuthorize("hasAuthority('USER_BAN')")
+    public Result<String> unbanUser(@PathVariable Long id) {
+        String operatorId = UserContext.getUserId();
+        userService.unbanUser(id, operatorId == null ? null : Long.parseLong(operatorId));
+        return Result.success("User unbanned");
+    }
+
+    @DeleteMapping("/admin/users/{id}")
+    @PreAuthorize("hasAuthority('USER_BAN')")
+    public Result<String> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return Result.success("User deleted");
     }
 
     private UserVO convertToVO(UserDO user) {

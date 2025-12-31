@@ -9,7 +9,9 @@ import com.sidequest.chat.infrastructure.feign.IdentityClient;
 import com.sidequest.chat.infrastructure.mapper.ChatMessageMapper;
 import com.sidequest.chat.infrastructure.mapper.ChatRoomMapper;
 import com.sidequest.chat.infrastructure.mapper.ChatRoomMemberMapper;
+import com.sidequest.chat.interfaces.dto.ChatRoomMemberVO;
 import com.sidequest.chat.interfaces.dto.ChatRoomVO;
+import com.sidequest.chat.interfaces.dto.CreateRoomRequest;
 import com.sidequest.common.Result;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -17,7 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -77,6 +81,36 @@ public class ChatService {
     }
 
     @Transactional
+    public ChatRoomVO createRoom(Long creatorId, CreateRoomRequest request) {
+        ChatRoomDO room = new ChatRoomDO();
+        room.setName(request.getName());
+        room.setType((request.getType() == null || request.getType().isBlank()) ? "GROUP" : request.getType());
+        room.setCreateTime(LocalDateTime.now());
+        chatRoomMapper.insert(room);
+
+        Set<Long> memberIds = new LinkedHashSet<>();
+        memberIds.add(creatorId);
+        if (request.getMemberIds() != null) {
+            memberIds.addAll(request.getMemberIds());
+        }
+
+        for (Long memberId : memberIds) {
+            ChatRoomMemberDO member = new ChatRoomMemberDO();
+            member.setRoomId(room.getId());
+            member.setUserId(memberId);
+            member.setLastReadMessageId(0L);
+            member.setJoinTime(LocalDateTime.now());
+            chatRoomMemberMapper.insert(member);
+        }
+
+        ChatRoomVO vo = new ChatRoomVO();
+        vo.setId(room.getId());
+        vo.setName(room.getName());
+        vo.setType(room.getType());
+        return vo;
+    }
+
+    @Transactional
     public ChatMessageDO sendMessage(Long senderId, Long roomId, String content) {
         ChatMessageDO msg = new ChatMessageDO();
         msg.setRoomId(roomId);
@@ -101,6 +135,24 @@ public class ChatService {
         return chatMessageMapper.selectList(query);
     }
 
+    public List<ChatRoomMemberVO> getRoomMembers(Long roomId) {
+        List<ChatRoomMemberDO> members = chatRoomMemberMapper.selectList(new LambdaQueryWrapper<ChatRoomMemberDO>()
+                .eq(ChatRoomMemberDO::getRoomId, roomId));
+        return members.stream().map(member -> {
+            ChatRoomMemberVO vo = new ChatRoomMemberVO();
+            vo.setUserId(member.getUserId());
+            vo.setJoinTime(member.getJoinTime());
+            try {
+                Result<IdentityClient.UserDTO> userRes = identityClient.getUserById(member.getUserId());
+                if (userRes.getCode() == 200 && userRes.getData() != null) {
+                    vo.setNickname(userRes.getData().getNickname());
+                    vo.setAvatar(userRes.getData().getAvatar());
+                }
+            } catch (Exception ignored) {}
+            return vo;
+        }).collect(Collectors.toList());
+    }
+
     @Transactional
     public void markAsRead(Long roomId, Long userId) {
         ChatMessageDO lastMsg = chatMessageMapper.selectOne(new LambdaQueryWrapper<ChatMessageDO>()
@@ -113,6 +165,22 @@ public class ChatService {
                     .eq(ChatRoomMemberDO::getUserId, userId)
                     .set(ChatRoomMemberDO::getLastReadMessageId, lastMsg.getId()));
         }
+    }
+
+    @Transactional
+    public boolean deleteRoom(Long roomId, Long userId) {
+        Long memberCount = chatRoomMemberMapper.selectCount(new LambdaQueryWrapper<ChatRoomMemberDO>()
+                .eq(ChatRoomMemberDO::getRoomId, roomId)
+                .eq(ChatRoomMemberDO::getUserId, userId));
+        if (memberCount == null || memberCount == 0) {
+            return false;
+        }
+        chatMessageMapper.delete(new LambdaQueryWrapper<ChatMessageDO>()
+                .eq(ChatMessageDO::getRoomId, roomId));
+        chatRoomMemberMapper.delete(new LambdaQueryWrapper<ChatRoomMemberDO>()
+                .eq(ChatRoomMemberDO::getRoomId, roomId));
+        chatRoomMapper.deleteById(roomId);
+        return true;
     }
 
     @Transactional

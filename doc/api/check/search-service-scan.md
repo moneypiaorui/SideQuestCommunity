@@ -40,3 +40,8 @@
 3. 添加重试机制和死信队列
 4. 补充缺失的搜索接口
 
+
+## Update Notes (ASCII)
+- Added search endpoints for users, tags, and advanced post filtering.
+- Indexer now skips non-normal posts (status != 1) and removes them from index.
+- Added videoUrl field to PostDoc for media filtering.

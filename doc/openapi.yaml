@@ -683,9 +683,9 @@ paths:
                 $ref: "#/components/schemas/ResultString"
 
   /api/search/posts:
-    get:
-      tags: [search]
-      summary: Search posts by keyword
+      get:
+        tags: [search]
+        summary: Search posts by keyword
       parameters:
         - name: keyword
           in: query
@@ -707,12 +707,67 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ResultPagePostDoc"
+                schema:
+                  $ref: "#/components/schemas/ResultPagePostDoc"
+  /api/search/posts/advanced:
+      get:
+        tags: [search]
+        summary: Advanced search posts
+        parameters:
+          - name: keyword
+            in: query
+            required: false
+            schema:
+              type: string
+          - name: sectionId
+            in: query
+            required: false
+            schema:
+              type: integer
+              format: int64
+          - name: tag
+            in: query
+            required: false
+            schema:
+              type: string
+          - name: fromTime
+            in: query
+            required: false
+            schema:
+              type: integer
+              format: int64
+          - name: toTime
+            in: query
+            required: false
+            schema:
+              type: integer
+              format: int64
+          - name: hasVideo
+            in: query
+            required: false
+            schema:
+              type: boolean
+          - name: page
+            in: query
+            schema:
+              type: integer
+              default: 0
+          - name: size
+            in: query
+            schema:
+              type: integer
+              default: 10
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultPagePostDoc"
   /api/search/user/posts:
-    get:
-      tags: [search]
-      summary: Search posts by user
+      get:
+        tags: [search]
+        summary: Search posts by user
       parameters:
         - name: userId
           in: query
@@ -735,8 +790,57 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ResultPagePostDoc"
+                schema:
+                  $ref: "#/components/schemas/ResultPagePostDoc"
+  /api/search/users:
+      get:
+        tags: [search]
+        summary: Search users
+        parameters:
+          - name: keyword
+            in: query
+            required: true
+            schema:
+              type: string
+          - name: page
+            in: query
+            schema:
+              type: integer
+              default: 0
+          - name: size
+            in: query
+            schema:
+              type: integer
+              default: 10
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultListUserSearchVO"
+  /api/search/tags:
+      get:
+        tags: [search]
+        summary: Search tags
+        parameters:
+          - name: keyword
+            in: query
+            required: true
+            schema:
+              type: string
+          - name: size
+            in: query
+            schema:
+              type: integer
+              default: 20
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultListString"
 
   /api/analytics/dashboard/stats:
     get:
@@ -784,36 +888,235 @@ paths:
                 $ref: "#/components/schemas/ResultMapObject"
 
   /api/moderation/check:
-    post:
-      tags: [moderation]
-      summary: Check text moderation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CheckRequest"
-      responses:
-        "200":
-          description: OK
+      post:
+        tags: [moderation]
+        summary: Check text moderation
+        requestBody:
+          required: true
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ResultBoolean"
+                $ref: "#/components/schemas/CheckRequest"
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultBoolean"
+  /api/moderation/check-image:
+      post:
+        tags: [moderation]
+        summary: Check image moderation
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckMediaRequest"
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultBoolean"
+  /api/moderation/check-video:
+      post:
+        tags: [moderation]
+        summary: Check video moderation
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckMediaRequest"
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultBoolean"
+  /api/moderation/cases:
+      get:
+        tags: [moderation]
+        summary: List moderation cases
+        parameters:
+          - name: status
+            in: query
+            required: false
+            schema:
+              type: integer
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultListModerationCaseDO"
+  /api/moderation/cases/{id}/handle:
+      post:
+        tags: [moderation]
+        summary: Handle moderation case
+        parameters:
+          - name: id
+            in: path
+            required: true
+            schema:
+              type: integer
+              format: int64
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModerationCaseHandleRequest"
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultModerationCaseDO"
+  /api/moderation/sensitive-words:
+      get:
+        tags: [moderation]
+        summary: List sensitive words
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultListSensitiveWordDO"
+      post:
+        tags: [moderation]
+        summary: Add sensitive word
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SensitiveWordRequest"
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultSensitiveWordDO"
+  /api/moderation/sensitive-words/{id}:
+      delete:
+        tags: [moderation]
+        summary: Delete sensitive word
+        parameters:
+          - name: id
+            in: path
+            required: true
+            schema:
+              type: integer
+              format: int64
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultString"
+  /api/moderation/reports:
+      get:
+        tags: [moderation]
+        summary: List reports
+        parameters:
+          - name: status
+            in: query
+            required: false
+            schema:
+              type: integer
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultListReportDO"
+      post:
+        tags: [moderation]
+        summary: Create report
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportRequest"
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultReportDO"
+  /api/moderation/reports/{id}/handle:
+      post:
+        tags: [moderation]
+        summary: Handle report
+        parameters:
+          - name: id
+            in: path
+            required: true
+            schema:
+              type: integer
+              format: int64
+          - name: status
+            in: query
+            required: true
+            schema:
+              type: integer
+          - name: handleResult
+            in: query
+            required: false
+            schema:
+              type: string
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultReportDO"
 
   /api/chat/rooms:
-    get:
-      tags: [chat]
-      summary: Get chat rooms
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: OK
+      get:
+        tags: [chat]
+        summary: Get chat rooms
+        security:
+          - bearerAuth: []
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultListChatRoomVO"
+      post:
+        tags: [chat]
+        summary: Create chat room
+        security:
+          - bearerAuth: []
+        requestBody:
+          required: true
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ResultListChatRoomVO"
+                $ref: "#/components/schemas/CreateRoomRequest"
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultChatRoomVO"
   /api/chat/rooms/find:
     get:
       tags: [chat]
@@ -835,10 +1138,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ResultChatRoomVO"
   /api/chat/rooms/{roomId}/messages:
-    get:
-      tags: [chat]
-      summary: Get messages
-      security:
+      get:
+        tags: [chat]
+        summary: Get messages
+        security:
         - bearerAuth: []
       parameters:
         - name: roomId
@@ -853,13 +1156,53 @@ paths:
           schema:
             type: integer
             format: int64
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ResultListChatMessageDO"
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultListChatMessageDO"
+  /api/chat/rooms/{roomId}:
+      delete:
+        tags: [chat]
+        summary: Delete chat room
+        security:
+          - bearerAuth: []
+        parameters:
+          - name: roomId
+            in: path
+            required: true
+            schema:
+              type: integer
+              format: int64
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultString"
+  /api/chat/rooms/{roomId}/members:
+      get:
+        tags: [chat]
+        summary: Get room members
+        security:
+          - bearerAuth: []
+        parameters:
+          - name: roomId
+            in: path
+            required: true
+            schema:
+              type: integer
+              format: int64
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultListChatRoomMemberVO"
   /api/chat/rooms/{roomId}/send:
     post:
       tags: [chat]
@@ -926,27 +1269,102 @@ paths:
               schema:
                 $ref: "#/components/schemas/ResultListMediaDO"
   /api/media/upload-url:
-    get:
-      tags: [media]
-      summary: Get upload URL
-      parameters:
-        - name: fileName
-          in: query
+      get:
+        tags: [media]
+        summary: Get upload URL
+        parameters:
+          - name: fileName
+            in: query
+            required: true
+            schema:
+              type: string
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultString"
+  /api/media/register:
+      post:
+        tags: [media]
+        summary: Register media metadata
+        security:
+          - bearerAuth: []
+        requestBody:
           required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ResultString"
+                $ref: "#/components/schemas/MediaRegisterRequest"
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultMediaDO"
+  /api/media/complete:
+      post:
+        tags: [media]
+        summary: Complete upload and register media
+        security:
+          - bearerAuth: []
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaCompleteRequest"
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultMediaDO"
+  /api/media/{id}:
+      get:
+        tags: [media]
+        summary: Get media detail
+        parameters:
+          - name: id
+            in: path
+            required: true
+            schema:
+              type: integer
+              format: int64
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultMediaDO"
+      delete:
+        tags: [media]
+        summary: Delete media
+        security:
+          - bearerAuth: []
+        parameters:
+          - name: id
+            in: path
+            required: true
+            schema:
+              type: integer
+              format: int64
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultString"
   /api/media/status/{id}:
-    get:
-      tags: [media]
-      summary: Get media status
-      parameters:
+      get:
+        tags: [media]
+        summary: Get media status
+        parameters:
         - name: id
           in: path
           required: true
@@ -961,10 +1379,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/ResultInteger"
   /api/media/danmaku:
-    post:
-      tags: [media]
-      summary: Send danmaku
-      security:
+      post:
+        tags: [media]
+        summary: Send danmaku
+        security:
         - bearerAuth: []
       requestBody:
         required: true
@@ -995,19 +1413,39 @@ paths:
           schema:
             type: integer
             format: int64
-        - name: toMs
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ResultListDanmakuVO"
+          - name: toMs
+            in: query
+            required: true
+            schema:
+              type: integer
+              format: int64
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultListDanmakuVO"
+  /api/media/danmaku/{id}:
+      delete:
+        tags: [media]
+        summary: Delete danmaku
+        security:
+          - bearerAuth: []
+        parameters:
+          - name: id
+            in: path
+            required: true
+            schema:
+              type: integer
+              format: int64
+        responses:
+          "200":
+            description: OK
+            content:
+              application/json:
+                schema:
+                  $ref: "#/components/schemas/ResultString"
 
   /api/mcp/rpc:
     post:
@@ -1143,12 +1581,78 @@ components:
         data:
           $ref: "#/components/schemas/PageUserVO"
     ResultPagePostDoc:
-      type: object
-      properties:
-        code: { type: integer }
-        message: { type: string }
-        data:
-          $ref: "#/components/schemas/PagePostDoc"
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
+            $ref: "#/components/schemas/PagePostDoc"
+    ResultListUserSearchVO:
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
+            type: array
+            items:
+              $ref: "#/components/schemas/UserSearchVO"
+    ResultListString:
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
+            type: array
+            items:
+              type: string
+    ResultListSensitiveWordDO:
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
+            type: array
+            items:
+              $ref: "#/components/schemas/SensitiveWordDO"
+    ResultSensitiveWordDO:
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
+            $ref: "#/components/schemas/SensitiveWordDO"
+    ResultListModerationCaseDO:
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
+            type: array
+            items:
+              $ref: "#/components/schemas/ModerationCaseDO"
+    ResultModerationCaseDO:
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
+            $ref: "#/components/schemas/ModerationCaseDO"
+    ResultListReportDO:
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
+            type: array
+            items:
+              $ref: "#/components/schemas/ReportDO"
+    ResultReportDO:
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
+            $ref: "#/components/schemas/ReportDO"
     ResultListCommentVO:
       type: object
       properties:
@@ -1175,29 +1679,45 @@ components:
         data:
           $ref: "#/components/schemas/ChatRoomVO"
     ResultListChatMessageDO:
-      type: object
-      properties:
-        code: { type: integer }
-        message: { type: string }
-        data:
-          type: array
-          items:
-            $ref: "#/components/schemas/ChatMessageDO"
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
+            type: array
+            items:
+              $ref: "#/components/schemas/ChatMessageDO"
     ResultChatMessageDO:
-      type: object
-      properties:
-        code: { type: integer }
-        message: { type: string }
-        data:
-          $ref: "#/components/schemas/ChatMessageDO"
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
+            $ref: "#/components/schemas/ChatMessageDO"
+    ResultListChatRoomMemberVO:
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
+            type: array
+            items:
+              $ref: "#/components/schemas/ChatRoomMemberVO"
     ResultListMediaDO:
-      type: object
-      properties:
-        code: { type: integer }
-        message: { type: string }
-        data:
-          type: array
-          items:
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
+            type: array
+            items:
+              $ref: "#/components/schemas/MediaDO"
+    ResultMediaDO:
+        type: object
+        properties:
+          code: { type: integer }
+          message: { type: string }
+          data:
             $ref: "#/components/schemas/MediaDO"
     ResultListDanmakuVO:
       type: object
@@ -1321,23 +1841,74 @@ components:
         postId: { type: integer, format: int64 }
         content: { type: string }
     DanmakuRequest:
-      type: object
-      required: [videoId, content, timeOffsetMs]
-      properties:
-        videoId: { type: integer, format: int64 }
-        content: { type: string }
-        timeOffsetMs: { type: integer, format: int64 }
-        color: { type: string, nullable: true }
+        type: object
+        required: [videoId, content, timeOffsetMs]
+        properties:
+          videoId: { type: integer, format: int64 }
+          content: { type: string }
+          timeOffsetMs: { type: integer, format: int64 }
+          color: { type: string, nullable: true }
+    MediaRegisterRequest:
+        type: object
+        required: [fileName, fileKey, fileType]
+        properties:
+          fileName: { type: string }
+          fileKey: { type: string }
+          fileType: { type: string }
+          url: { type: string }
+    MediaCompleteRequest:
+        type: object
+        required: [fileName, fileKey, fileType]
+        properties:
+          fileName: { type: string }
+          fileKey: { type: string }
+          fileType: { type: string }
+          url: { type: string }
     CheckRequest:
-      type: object
-      required: [content]
-      properties:
-        content: { type: string }
+        type: object
+        required: [content]
+        properties:
+          content: { type: string }
+    CheckMediaRequest:
+        type: object
+        required: [url]
+        properties:
+          url: { type: string }
+    SensitiveWordRequest:
+        type: object
+        required: [word]
+        properties:
+          word: { type: string }
+          level: { type: string }
+    ModerationCaseHandleRequest:
+        type: object
+        required: [result]
+        properties:
+          result: { type: string }
+          reason: { type: string }
+    ReportRequest:
+        type: object
+        required: [targetType, targetId, reason]
+        properties:
+          targetType: { type: string }
+          targetId: { type: integer, format: int64 }
+          reason: { type: string }
     SendMessageRequest:
-      type: object
-      required: [content]
-      properties:
-        content: { type: string }
+        type: object
+        required: [content]
+        properties:
+          content: { type: string }
+    CreateRoomRequest:
+        type: object
+        required: [name]
+        properties:
+          name: { type: string }
+          type: { type: string }
+          memberIds:
+            type: array
+            items:
+              type: integer
+              format: int64
     JsonRpcRequest:
       type: object
       properties:
@@ -1452,21 +2023,69 @@ components:
         videoDuration: { type: integer, nullable: true }
         tags: { type: string }
     PostDoc:
-      type: object
-      properties:
-        id: { type: string }
-        title: { type: string }
-        content: { type: string }
-        authorName: { type: string }
-        authorId: { type: integer, format: int64 }
-        imageUrls: { type: string }
-        sectionId: { type: integer, format: int64 }
-        status: { type: integer }
-        likeCount: { type: integer }
-        commentCount: { type: integer }
-        favoriteCount: { type: integer }
-        viewCount: { type: integer }
-        createTime: { type: integer, format: int64 }
+        type: object
+        properties:
+          id: { type: string }
+          title: { type: string }
+          content: { type: string }
+          authorName: { type: string }
+          authorAvatar: { type: string }
+          authorId: { type: integer, format: int64 }
+          imageUrls: { type: string }
+          videoUrl: { type: string }
+          sectionId: { type: integer, format: int64 }
+          status: { type: integer }
+          likeCount: { type: integer }
+          commentCount: { type: integer }
+          favoriteCount: { type: integer }
+          viewCount: { type: integer }
+          createTime: { type: integer, format: int64 }
+          tags:
+            type: array
+            items:
+              type: string
+    UserSearchVO:
+        type: object
+        properties:
+          id: { type: integer, format: int64 }
+          nickname: { type: string }
+          avatar: { type: string }
+          postCount: { type: integer }
+    SensitiveWordDO:
+        type: object
+        properties:
+          id: { type: integer, format: int64 }
+          word: { type: string }
+          level: { type: string }
+          status: { type: integer }
+          createTime: { type: string, format: date-time }
+    ModerationCaseDO:
+        type: object
+        properties:
+          id: { type: integer, format: int64 }
+          contentType: { type: string }
+          content: { type: string }
+          contentUrl: { type: string }
+          result: { type: string }
+          level: { type: string }
+          reason: { type: string }
+          status: { type: integer }
+          operatorId: { type: integer, format: int64 }
+          createTime: { type: string, format: date-time }
+          updateTime: { type: string, format: date-time }
+    ReportDO:
+        type: object
+        properties:
+          id: { type: integer, format: int64 }
+          targetType: { type: string }
+          targetId: { type: integer, format: int64 }
+          reporterId: { type: integer, format: int64 }
+          reason: { type: string }
+          status: { type: integer }
+          handlerId: { type: integer, format: int64 }
+          handleResult: { type: string }
+          createTime: { type: string, format: date-time }
+          updateTime: { type: string, format: date-time }
     CommentVO:
       allOf:
         - $ref: "#/components/schemas/CommentDO"
@@ -1484,16 +2103,23 @@ components:
         parentId: { type: integer, format: int64, nullable: true }
         createTime: { type: string, format: date-time }
     ChatRoomVO:
-      type: object
-      properties:
-        id: { type: integer, format: int64 }
-        name: { type: string }
-        type: { type: string }
-        lastMessage: { type: string }
-        lastMessageTime: { type: string, format: date-time }
-        unreadCount: { type: integer }
-        recipientNickname: { type: string }
-        recipientAvatar: { type: string }
+        type: object
+        properties:
+          id: { type: integer, format: int64 }
+          name: { type: string }
+          type: { type: string }
+          lastMessage: { type: string }
+          lastMessageTime: { type: string, format: date-time }
+          unreadCount: { type: integer }
+          recipientNickname: { type: string }
+          recipientAvatar: { type: string }
+    ChatRoomMemberVO:
+        type: object
+        properties:
+          userId: { type: integer, format: int64 }
+          nickname: { type: string }
+          avatar: { type: string }
+          joinTime: { type: string, format: date-time }
     ChatMessageDO:
       type: object
       properties:

@@ -2,6 +2,10 @@ package com.sidequest.identity.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.sidequest.identity.infrastructure.NotificationDO;
+import com.sidequest.identity.infrastructure.NotificationMapper;
 import com.sidequest.identity.interfaces.dto.UnreadCountVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +21,7 @@ import java.util.Map;
 public class NotificationService {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final NotificationMapper notificationMapper;
 
     private static final String UNREAD_COUNT_KEY_PREFIX = "user:unread:count:";
 
@@ -43,6 +48,28 @@ public class NotificationService {
     public void markAsRead(Long userId, String type) {
         String key = UNREAD_COUNT_KEY_PREFIX + userId;
         redisTemplate.opsForHash().put(key, type, "0");
+
+        LambdaQueryWrapper<NotificationDO> query = new LambdaQueryWrapper<NotificationDO>()
+                .eq(NotificationDO::getUserId, userId)
+                .eq(NotificationDO::getType, type)
+                .eq(NotificationDO::getStatus, NotificationDO.STATUS_UNREAD);
+        NotificationDO update = new NotificationDO();
+        update.setStatus(NotificationDO.STATUS_READ);
+        notificationMapper.update(update, query);
+    }
+
+    public Page<NotificationDO> listNotifications(Long userId, String type, Integer status, int current, int size) {
+        Page<NotificationDO> page = new Page<>(current, size);
+        LambdaQueryWrapper<NotificationDO> query = new LambdaQueryWrapper<NotificationDO>()
+                .eq(NotificationDO::getUserId, userId)
+                .orderByDesc(NotificationDO::getCreateTime);
+        if (type != null && !type.isBlank()) {
+            query.eq(NotificationDO::getType, type);
+        }
+        if (status != null) {
+            query.eq(NotificationDO::getStatus, status);
+        }
+        return notificationMapper.selectPage(page, query);
     }
 
     @KafkaListener(topics = "user-events", groupId = "identity-notification-group")
@@ -54,8 +81,10 @@ public class NotificationService {
             Long targetUserId = node.get("targetUserId").asLong();
             
             if ("interaction".equals(type)) {
+                createNotification(targetUserId, "interaction", node.get("content").asText(""));
                 incrementUnreadCount(targetUserId, "interaction");
             } else if ("system".equals(type)) {
+                createNotification(targetUserId, "system", node.get("content").asText(""));
                 incrementUnreadCount(targetUserId, "system");
             }
         } catch (Exception e) {
@@ -83,6 +112,15 @@ public class NotificationService {
     public void incrementUnreadCount(Long userId, String type) {
         String key = UNREAD_COUNT_KEY_PREFIX + userId;
         redisTemplate.opsForHash().increment(key, type, 1);
+    }
+
+    private void createNotification(Long userId, String type, String content) {
+        NotificationDO notification = new NotificationDO();
+        notification.setUserId(userId);
+        notification.setType(type);
+        notification.setContent(content);
+        notification.setStatus(NotificationDO.STATUS_UNREAD);
+        notificationMapper.insert(notification);
     }
 }
 

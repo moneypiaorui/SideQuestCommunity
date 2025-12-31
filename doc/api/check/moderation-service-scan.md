@@ -86,3 +86,8 @@
 5. **补充缺失接口**：
    - 按照计划文档补充所有缺失的接口
 
+
+## Update Notes (ASCII)
+- Added moderation endpoints for image/video checks, cases, sensitive words, and reports.
+- Persisted moderation cases, sensitive words, and reports to Postgres.
+- Added Redis cache for sensitive words and moderation results, plus Kafka event emission.

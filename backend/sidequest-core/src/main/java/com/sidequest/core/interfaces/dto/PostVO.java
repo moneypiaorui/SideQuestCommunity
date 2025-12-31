@@ -21,6 +21,8 @@ public class PostVO {
     private Integer viewCount;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
+    private Boolean isPinned;
+    private Boolean isFeatured;
     
     private List<String> imageUrls; 
     private String videoUrl;

@@ -2,7 +2,9 @@ package com.sidequest.chat.interfaces;
 
 import com.sidequest.chat.application.ChatService;
 import com.sidequest.chat.infrastructure.ChatMessageDO;
+import com.sidequest.chat.interfaces.dto.ChatRoomMemberVO;
 import com.sidequest.chat.interfaces.dto.ChatRoomVO;
+import com.sidequest.chat.interfaces.dto.CreateRoomRequest;
 import com.sidequest.common.Result;
 import com.sidequest.common.context.UserContext;
 import lombok.Data;
@@ -23,10 +25,31 @@ public class ChatController {
         return Result.success(chatService.getUserRooms(userId));
     }
 
+    @PostMapping("/rooms")
+    public Result<ChatRoomVO> createRoom(@RequestBody CreateRoomRequest request) {
+        Long userId = Long.valueOf(UserContext.getUserId());
+        return Result.success(chatService.createRoom(userId, request));
+    }
+
     @GetMapping("/rooms/find")
     public Result<ChatRoomVO> findOrCreateRoom(@RequestParam Long recipientId) {
         Long userId = Long.valueOf(UserContext.getUserId());
         return Result.success(chatService.findOrCreatePrivateRoom(userId, recipientId));
+    }
+
+    @DeleteMapping("/rooms/{roomId}")
+    public Result<String> deleteRoom(@PathVariable Long roomId) {
+        Long userId = Long.valueOf(UserContext.getUserId());
+        boolean deleted = chatService.deleteRoom(roomId, userId);
+        if (!deleted) {
+            return Result.forbidden();
+        }
+        return Result.success("Room deleted");
+    }
+
+    @GetMapping("/rooms/{roomId}/members")
+    public Result<List<ChatRoomMemberVO>> getRoomMembers(@PathVariable Long roomId) {
+        return Result.success(chatService.getRoomMembers(roomId));
     }
 
     @GetMapping("/rooms/{roomId}/messages")
