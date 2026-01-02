@@ -52,6 +52,7 @@ Desktop.ini
 # Env/local config
 .env
 .env.*
+!.env.example
 
 # Logs
 logs/
@@ -61,6 +62,7 @@ logs/
 infra/docker-compose/postgres/data
 # 对象存储
 infra/docker-compose/minio/data
+infra/docker-compose/minio/config
 
 # Nginx 相关
 infra/docker-compose/nginx/html/
