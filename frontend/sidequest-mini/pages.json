@@ -45,6 +45,10 @@
       "style": { "navigationStyle": "custom" }
     },
     {
+      "path": "pages/message/comments",
+      "style": { "navigationStyle": "custom" }
+    },
+    {
       "path": "pages/message/follows",
       "style": { "navigationStyle": "custom" }
     },

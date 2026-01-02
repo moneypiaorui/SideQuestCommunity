@@ -8,21 +8,21 @@
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </view>
-        <text class="title">赞与收藏</text>
+        <text class="title">收到的评论</text>
       </view>
     </view>
     <scroll-view scroll-y class="content-scroll" @scrolltolower="loadMore">
-      <view v-for="item in interactions" :key="item.id" class="notify-item brutal-card">
+      <view v-for="item in comments" :key="item.id" class="notify-item brutal-card">
         <image :src="item.avatar || 'https://picsum.photos/80/80?random=10'" class="avatar" />
         <view class="info">
-          <text class="user">{{ item.title || "互动通知" }}</text>
+          <text class="user">{{ item.title || "评论提醒" }}</text>
           <text class="action">{{ item.content }}</text>
           <text class="time">{{ formatDate(item.createTime) }}</text>
         </view>
       </view>
       <view v-if="loading" class="loading-status">加载中...</view>
-      <view v-if="noMore && interactions.length > 0" class="loading-status">没有更多了</view>
-      <view v-if="!loading && interactions.length === 0" class="empty-status">暂无互动消息</view>
+      <view v-if="noMore && comments.length > 0" class="loading-status">没有更多了</view>
+      <view v-if="!loading && comments.length === 0" class="empty-status">暂无评论通知</view>
       <view class="safe-area-bottom" style="height: 40rpx;" />
     </scroll-view>
   </view>
@@ -34,22 +34,22 @@ import request from "@/utils/request"
 
 const isDark = ref(uni.getStorageSync("isDark") || false)
 const statusBarHeight = ref(uni.getSystemInfoSync().statusBarHeight)
-const interactions = ref([])
+const comments = ref([])
 const loading = ref(false)
 const noMore = ref(false)
 let currentPage = 1
 
 onMounted(() => {
-  loadInteractions(true)
+  loadComments(true)
 })
 
-const loadInteractions = async (reset = false) => {
+const loadComments = async (reset = false) => {
   if (loading.value || (noMore.value && !reset)) return
 
   if (reset) {
     currentPage = 1
     noMore.value = false
-    interactions.value = []
+    comments.value = []
   }
 
   loading.value = true
@@ -60,26 +60,27 @@ const loadInteractions = async (reset = false) => {
     const records = res?.records || []
     const filtered = records.filter((item) => {
       const content = (item.content || "").toLowerCase()
-      return content.includes("like") || content.includes("favorit")
+      return content.includes("comment")
     })
+
     if (records.length < 20) {
       noMore.value = true
     }
-    interactions.value = [...interactions.value, ...filtered]
+    comments.value = [...comments.value, ...filtered]
     currentPage += 1
 
     if (currentPage === 2) {
       await request({ url: "/api/notifications/mark-read?type=interaction", method: "POST" })
     }
   } catch (err) {
-    console.error("Load interactions failed:", err)
+    console.error("Load comments failed:", err)
   } finally {
     loading.value = false
   }
 }
 
 const loadMore = () => {
-  loadInteractions()
+  loadComments()
 }
 
 const formatDate = (value) => {
