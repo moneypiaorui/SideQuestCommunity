@@ -181,6 +181,8 @@ services:
     build:
       context: ../../frontend/side-quest-manage
       target: build
+      args:
+        BASE_PATH: ${BASE_PATH:-/admin}
     image: sidequest/manage-frontend-export
     container_name: sidequest-manage-export
     volumes:
