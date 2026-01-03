@@ -295,8 +295,8 @@ services:
       - SPRING_DATA_REDIS_PORT=${REDIS_PORT:-6379}
       - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
       - MINIO_PUBLICENDPOINT=${MINIO_PUBLICENDPOINT:-http://localhost/minio}
-      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_ACCESSKEY=${MINIO_ACCESSKEY:-minioadmin}
+      - MINIO_SECRETKEY=${MINIO_SECRETKEY:-minioadmin}
       - MINIO_BUCKET=${MINIO_BUCKET:-sidequest}
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-dev}
     depends_on:
